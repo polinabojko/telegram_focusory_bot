@@ -232,9 +232,8 @@ pomodoro_timers.pop(chat_id, None)
 @bot.message_handler(func=lambda m: m.text in ["🍅 15 min", "🍅 25 min", "🍅 50 min"]) 
 def handle_pomodoro_choice(message):
     chat_id = str(message.chat.id)
-
-if chat_id in pomodoro_timers:
-    return
+    if chat_id in pomodoro_timers:
+        return
 
 minutes = int(message.text.split()[1])
 start_pomodoro(chat_id, minutes)
