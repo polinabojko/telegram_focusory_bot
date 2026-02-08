@@ -154,7 +154,8 @@ def mood(message):
 def save_mood(message):
     chat_id = str(message.chat.id) 
     today = today_str() 
-    user_moods.setdefault(chat_id, {})[today] = message.text save_data()
+    user_moods.setdefault(chat_id, {})[today] = message.text 
+    save_data()
 
 bot.send_message(
     message.chat.id,
