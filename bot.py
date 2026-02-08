@@ -163,6 +163,7 @@ def save_mood(message):
 def stats(message):
     chat_id = str(message.chat.id) 
     lang = get_lang(chat_id)
+
     moods = user_moods.get(chat_id, {})
     if not moods:
         bot.send_message(
@@ -171,23 +172,22 @@ def stats(message):
         )
         return
 
-summary = {}
-for m in moods.values():
-    summary[m] = summary.get(m, 0) + 1
+    summary = {}
+    for m in moods.values():
+        summary[m] = summary.get(m, 0) + 1
 
-if lang == "en": 
-    text = "📊 Mood stats:\n"
-else: 
-    text = "📊 Статистика настроения:\n"
-for k, v in summary.items():
-    text += f"{k} — {v}\n"
+    if lang == "en": 
+        text = "📊 Mood stats:\n"
+    else: 
+        text = "📊 Статистика настроения:\n"
 
-today_pomo = pomodoro_stats.get(chat_id, {}).get(today_str(), 0)
-text += f"\n🍅 Pomodoro today: {today_pomo}"
+    for k, v in summary.items():
+        text += f"{k} — {v}\n"
 
-bot.send_message(message.chat.id, text)
+    today_pomo = pomodoro_stats.get(chat_id, {}).get(today_str(), 0)
+    text += f"\n🍅 Pomodoro today: {today_pomo}"
 
-
+    bot.send_message(message.chat.id, text)
 @bot.message_handler(commands=['pomodoro']) 
 def pomodoro_menu(message):
     bot.send_message( message.chat.id, "🍅 Choose focus time:", reply_markup=pomodoro_keyboard() )
