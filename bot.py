@@ -110,7 +110,7 @@ def start(message):
 @bot.message_handler(func=lambda m: m.text in ["🇷🇺 Русский", "🇬🇧 English"]) 
 def set_language(message):
     lang = "ru" 
-    if "Русский" in message.text 
+    if "Русский" in message.text: 
     else "en" user_language[str(message.chat.id)] = lang save_data()
 
 bot.send_message(
@@ -171,7 +171,7 @@ for m in moods.values():
     summary[m] = summary.get(m, 0) + 1
 
 text = "📊 Mood stats:\n"
-if lang == "en" 
+if lang == "en": 
 else "📊 Статистика настроения:\n"
 for k, v in summary.items():
     text += f"{k} — {v}\n"
@@ -191,7 +191,7 @@ def start_pomodoro(chat_id, minutes): lang = get_lang(chat_id)
 bot.send_message(
     int(chat_id),
     f"🍅 Focus started — {minutes} minutes." 
-    if lang == "en" 
+    if lang == "en": 
     else f"🍅 Фокус начался — {minutes} минут."
 )
 
@@ -210,7 +210,7 @@ save_data()
 bot.send_message(
     int(chat_id),
     "✅ Pomodoro done! Take a short break 🌿" 
-    if lang == "en" 
+    if lang == "en": 
     else "✅ Фокус завершен! Сделай перерыв 🌿"
 )
 
@@ -235,7 +235,7 @@ def stop_pomodoro(message):
 bot.send_message(
     message.chat.id,
     "🛑 Pomodoro stopped."
-    if get_lang(chat_id) == "en" 
+    if get_lang(chat_id) == "en": 
     else "🛑 Pomodoro остановлен."
 )
 
