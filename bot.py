@@ -10,7 +10,6 @@ TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "data.json"
 
----------- ДАННЫЕ ----------
 
 user_language = {} 
 daily_affirmation_index = {} 
@@ -19,7 +18,6 @@ user_moods = {}
 pomodoro_timers = {} 
 pomodoro_stats = {}
 
----------- ЗАГРУЗКА / СОХРАНЕНИЕ ----------
 
 def load_data(): 
     global user_language, daily_affirmation_index, last_affirmation_date, user_moods, pomodoro_stats 
@@ -45,7 +43,6 @@ def save_data():
 
 load_data()
 
----------- ТЕКСТЫ ----------
 
 texts = {
     "ru": { "choose_lang": "👋 Выбери язык:", 
@@ -78,7 +75,6 @@ affirmations = {
     ] 
 }
 
----------- КЛАВИАТУРЫ ----------
 
 def language_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True) 
@@ -98,7 +94,6 @@ def pomodoro_keyboard():
     kb.add("🛑 Stop") 
     return kb
 
----------- ВСПОМОГАТЕЛЬНОЕ ----------
 
 def get_lang(chat_id):
     return user_language.get(str(chat_id), "en")
@@ -106,7 +101,6 @@ def get_lang(chat_id):
 def today_str():
     return date.today().isoformat()
 
----------- START ----------
 
 @bot.message_handler(commands=['start']) 
 def start(message):
@@ -125,7 +119,6 @@ bot.send_message(
     reply_markup=main_keyboard()
 )
 
----------- АФФИРМАЦИЯ ----------
 
 @bot.message_handler(commands=['morning'])
 def morning(message):
@@ -146,7 +139,6 @@ save_data()
 
 bot.send_message(message.chat.id, "🌅 " + phrase)
 
----------- НАСТРОЕНИЕ ----------
 
 @bot.message_handler(commands=['mood'])
 def mood(message):
@@ -163,7 +155,6 @@ bot.send_message(
     texts[get_lang(chat_id)]["mood_saved"]
 )
 
----------- СТАТИСТИКА ----------
 
 @bot.message_handler(commands=['stats']) 
 def stats(message):
@@ -190,7 +181,6 @@ text += f"\n🍅 Pomodoro today: {today_pomo}"
 
 bot.send_message(message.chat.id, text)
 
----------- POMODORO ----------
 
 @bot.message_handler(commands=['pomodoro']) 
 def pomodoro_menu(message):
