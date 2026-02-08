@@ -131,10 +131,9 @@ def morning(message):
     chat_id = str(message.chat.id) 
     lang = get_lang(chat_id) 
     today = today_str()
-
-if last_affirmation_date.get(chat_id) == today:
+    if last_affirmation_date.get(chat_id) == today:
     bot.send_message(message.chat.id, texts[lang]["already_affirmed"])
-    return
+        return
 
 idx = daily_affirmation_index.get(chat_id, 0)
 phrase = affirmations[lang][idx % len(affirmations[lang])]
