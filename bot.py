@@ -6,7 +6,7 @@ import threading
 from datetime import date, datetime, timedelta
 
 # ------------------ ТОКЕН ------------------
-os.getenv("TOKEN")
+TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "data.json"
 
