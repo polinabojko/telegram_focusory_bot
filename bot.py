@@ -155,10 +155,10 @@ def save_mood(message):
     today = today_str() 
     user_moods.setdefault(chat_id, {})[today] = message.text 
     save_data()
-
-bot.send_message(
-    message.chat.id,
-    texts[get_lang(chat_id)]["mood_saved"]
+    
+    bot.send_message(
+        message.chat.id,
+        texts[get_lang(chat_id)]["mood_saved"]
 )
 
 
@@ -166,7 +166,6 @@ bot.send_message(
 def stats(message):
     chat_id = str(message.chat.id) 
     lang = get_lang(chat_id)
-
     moods = user_moods.get(chat_id, {})
     if not moods:
         bot.send_message(message.chat.id, texts[lang]["no_mood"])
