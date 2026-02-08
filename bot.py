@@ -177,9 +177,10 @@ summary = {}
 for m in moods.values():
     summary[m] = summary.get(m, 0) + 1
 
-text = "📊 Mood stats:\n"
 if lang == "en": 
-    else: "📊 Статистика настроения:\n"
+    text = "📊 Mood stats:\n"
+else: 
+    text = "📊 Статистика настроения:\n"
 for k, v in summary.items():
     text += f"{k} — {v}\n"
 
