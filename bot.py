@@ -5,22 +5,23 @@ import os
 import threading
 from datetime import date, datetime, timedelta
 
-TOKEN = os.getenv("TOKEN")
+# ------------------ ТОКЕН ------------------
+TOKEN = "ВСТАВЬ_СВОЙ_ТОКЕН"
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "data.json"
 
-# ---------------- ДАННЫЕ ----------------
+# ------------------ ДАННЫЕ ------------------
 user_language = {}
 daily_affirmation_index = {}
 last_affirmation_date = {}
 user_moods = {}
-pomodoro_sessions = {}
+pomodoro_sessions = {}  # chat_id: {"timer": threading.Timer, "minutes": int, "on_break": bool}
 pomodoro_stats = {}
 tasks = {}
 
-# ---------------- ЗАГРУЗКА/СОХРАНЕНИЕ ----------------
+# ------------------ ЗАГРУЗКА/СОХРАНЕНИЕ ------------------
 def load_data():
-    global user_language, daily_affirmation_index, last_affirmation_date, user_moods, pomodoro_sessions, pomodoro_stats, tasks
+    global user_language, daily_affirmation_index, last_affirmation_date, user_moods, pomodoro_stats, tasks
     if not os.path.exists(DATA_FILE):
         return
     with open(DATA_FILE, "r", encoding="utf-8") as f:
@@ -29,7 +30,6 @@ def load_data():
     daily_affirmation_index = data.get("daily_affirmation_index", {})
     last_affirmation_date = data.get("last_affirmation_date", {})
     user_moods = data.get("user_moods", {})
-    pomodoro_sessions = data.get("pomodoro_sessions", {})
     pomodoro_stats = data.get("pomodoro_stats", {})
     tasks = data.get("tasks", {})
 
@@ -40,14 +40,13 @@ def save_data():
             "daily_affirmation_index": daily_affirmation_index,
             "last_affirmation_date": last_affirmation_date,
             "user_moods": user_moods,
-            "pomodoro_sessions": pomodoro_sessions,
             "pomodoro_stats": pomodoro_stats,
             "tasks": tasks
         }, f, ensure_ascii=False, indent=2)
 
 load_data()
 
-# ---------------- ТЕКСТЫ ----------------
+# ------------------ ТЕКСТЫ ------------------
 texts = {
     "ru": {
         "choose_lang": "👋 Выберите язык:",
@@ -91,7 +90,7 @@ texts = {
     }
 }
 
-# ---------------- АФФИРМАЦИИ ----------------
+# ------------------ АФФИРМАЦИИ ------------------
 affirmations = {
     "ru": [
         "Позвольте себе двигаться в собственном ритме.", "Каждый шаг имеет значение.",
@@ -129,7 +128,7 @@ affirmations = {
     ]
 }
 
-# ---------------- КНОПКИ ----------------
+# ------------------ КНОПКИ ------------------
 def language_keyboard():
     kb = ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("🇷🇺 Русский", "🇬🇧 English")
@@ -165,25 +164,25 @@ def pomodoro_keyboard(lang):
         kb.add("⛔ Stop")
     return kb
 
-def new_focus_keyboard(lang):
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    if lang == "ru":
-        kb.add(texts["ru"]["new_focus"], texts["ru"]["exit"], texts["ru"]["skip_break"])
-    else:
-        kb.add(texts["en"]["new_focus"], texts["en"]["exit"], texts["en"]["skip_break"])
-    return kb
-
-def tasks_view_keyboard(lang):
-    kb = ReplyKeyboardMarkup(resize_keyboard=True)
-    if lang == "ru":
-        kb.add("📅 Сегодня", "📅 Неделя", "📅 Месяц")
-    else:
-        kb.add("📅 Today", "📅 Week", "📅 Month")
-    return kb
-
-# ---------------- УТИЛИТЫ ----------------
 def get_lang(chat_id):
     return user_language.get(str(chat_id), "en")
 
 def today_str():
     return date.today().isoformat()
+
+# ------------------ ОБРАБОТЧИК /start ------------------
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.send_message(message.chat.id, texts["en"]["choose_lang"], reply_markup=language_keyboard())
+
+@bot.message_handler(func=lambda m: m.text in ["🇷🇺 Русский", "🇬🇧 English"])
+def set_language(message):
+    cid = str(message.chat.id)
+    lang = "ru" if "Русский" in message.text else "en"
+    user_language[cid] = lang
+    save_data()
+    bot.send_message(message.chat.id, texts[lang]["welcome"], reply_markup=main_keyboard(lang))
+
+# ------------------ ЗАПУСК ------------------
+print("Bot is running...")
+bot.infinity_polling(timeout=60, long_polling_timeout=60)
