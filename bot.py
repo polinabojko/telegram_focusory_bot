@@ -218,11 +218,14 @@ pomodoro_stats.setdefault(chat_id, {})
 pomodoro_stats[chat_id][today] = pomodoro_stats[chat_id].get(today, 0) + 1
 save_data()
 
+if lang == "en":
+    text = "✅ Pomodoro done! Take a short break 🌿"
+else:
+    text = "✅ Фокус завершен! Сделай перерыв 🌿"
+
 bot.send_message(
     int(chat_id),
-    "✅ Pomodoro done! Take a short break 🌿" 
-    if lang == "en": 
-    else "✅ Фокус завершен! Сделай перерыв 🌿"
+    text
 )
 
 pomodoro_timers.pop(chat_id, None)
@@ -243,11 +246,14 @@ def stop_pomodoro(message):
     timer = pomodoro_timers.pop(chat_id, None) 
     if timer: timer.cancel()
 
+if get_lang(chat_id) == "en":
+    text = "🛑 Pomodoro stopped."
+else:
+    text = "🛑 Pomodoro остановлен."
+
 bot.send_message(
     message.chat.id,
-    "🛑 Pomodoro stopped."
-    if get_lang(chat_id) == "en": 
-    else "🛑 Pomodoro остановлен."
+    text
 )
 
 print("Bot is running...") 
