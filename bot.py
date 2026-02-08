@@ -118,10 +118,11 @@ def set_language(message):
 
     user_language[cid] = lang
     save_data()
+    
     bot.send_message(
-    message.chat.id,
-    texts[lang]["welcome"],
-    reply_markup=main_keyboard()
+        message.chat.id,
+        texts[lang]["welcome"],
+        reply_markup=main_keyboard()
 )
 
 
