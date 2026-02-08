@@ -109,12 +109,18 @@ def start(message):
 
 @bot.message_handler(func=lambda m: m.text in ["🇷🇺 Русский", "🇬🇧 English"]) 
 def set_language(message):
-    lang = "ru" 
-    if "Русский" in message.text: 
-    else "en" user_language[str(message.chat.id)] = lang save_data()
+    cid = str(message.chat.id)
+
+    if "Русский" in message.text:
+        lang = "ru"
+    else:
+        lang = "en"
+
+    user_language[cid] = lang
+    save_data()
 
 bot.send_message(
-    message.chat.id,
+    elseat.id,
     texts[lang]["welcome"],
     reply_markup=main_keyboard()
 )
@@ -172,7 +178,7 @@ for m in moods.values():
 
 text = "📊 Mood stats:\n"
 if lang == "en": 
-else "📊 Статистика настроения:\n"
+    else: "📊 Статистика настроения:\n"
 for k, v in summary.items():
     text += f"{k} — {v}\n"
 
