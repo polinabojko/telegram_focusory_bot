@@ -134,15 +134,12 @@ def morning(message):
     if last_affirmation_date.get(chat_id) == today:
         bot.send_message(message.chat.id, texts[lang]["already_affirmed"])
         return
-
-idx = daily_affirmation_index.get(chat_id, 0)
-phrase = affirmations[lang][idx % len(affirmations[lang])]
-
-daily_affirmation_index[chat_id] = idx + 1
-last_affirmation_date[chat_id] = today
-save_data()
-
-bot.send_message(message.chat.id, "🌅 " + phrase)
+        idx = daily_affirmation_index.get(chat_id, 0)
+        phrase = affirmations[lang][idx % len(affirmations[lang])]
+        daily_affirmation_index[chat_id] = idx + 1
+        last_affirmation_date[chat_id] = today
+        save_data()
+        bot.send_message(message.chat.id, "🌅 " + phrase)
 
 
 @bot.message_handler(commands=['mood'])
