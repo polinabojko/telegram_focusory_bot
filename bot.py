@@ -167,10 +167,10 @@ def stats(message):
     chat_id = str(message.chat.id) 
     lang = get_lang(chat_id)
 
-moods = user_moods.get(chat_id, {})
-if not moods:
-    bot.send_message(message.chat.id, texts[lang]["no_mood"])
-    return
+    moods = user_moods.get(chat_id, {})
+    if not moods:
+        bot.send_message(message.chat.id, texts[lang]["no_mood"])
+        return
 
 summary = {}
 for m in moods.values():
