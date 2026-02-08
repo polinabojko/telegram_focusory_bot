@@ -123,7 +123,7 @@ def set_language(message):
         message.chat.id,
         texts[lang]["welcome"],
         reply_markup=main_keyboard()
-)
+    )
 
 
 @bot.message_handler(commands=['morning'])
@@ -159,7 +159,7 @@ def save_mood(message):
     bot.send_message(
         message.chat.id,
         texts[get_lang(chat_id)]["mood_saved"]
-)
+    )
 
 
 @bot.message_handler(commands=['stats']) 
@@ -168,7 +168,10 @@ def stats(message):
     lang = get_lang(chat_id)
     moods = user_moods.get(chat_id, {})
     if not moods:
-        bot.send_message(message.chat.id, texts[lang]["no_mood"])
+        bot.send_message(
+            message.chat.id, 
+            texts[lang]["no_mood"]
+        )
         return
 
 summary = {}
@@ -193,16 +196,14 @@ def pomodoro_menu(message):
     bot.send_message( message.chat.id, "🍅 Choose focus time:", reply_markup=pomodoro_keyboard() )
 
 def start_pomodoro(chat_id, minutes): lang = get_lang(chat_id)
-
-if lang == "en":
-    text = f"🍅 Focus started — {minutes} minutes."
-else:
-    text = f"🍅 Фокус начался — {minutes} минут."
-
-bot.send_message(
-    int(chat_id),
-    text
-)
+    if lang == "en":
+        text = f"🍅 Focus started — {minutes} minutes."
+        else:
+            text = f"🍅 Фокус начался — {minutes} минут."
+            bot.send_message(
+                int(chat_id),
+                text
+            )
 
 timer = threading.Timer(minutes * 60, pomodoro_finished, args=[chat_id])
 pomodoro_timers[chat_id] = timer
@@ -220,7 +221,6 @@ if lang == "en":
     text = "✅ Pomodoro done! Take a short break 🌿"
 else:
     text = "✅ Фокус завершен! Сделай перерыв 🌿"
-
 bot.send_message(
     int(chat_id),
     text
