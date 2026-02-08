@@ -120,7 +120,7 @@ def set_language(message):
     save_data()
 
 bot.send_message(
-    elseat.id,
+    message.chat.id,
     texts[lang]["welcome"],
     reply_markup=main_keyboard()
 )
