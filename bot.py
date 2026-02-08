@@ -132,7 +132,7 @@ def morning(message):
     lang = get_lang(chat_id) 
     today = today_str()
     if last_affirmation_date.get(chat_id) == today:
-    bot.send_message(message.chat.id, texts[lang]["already_affirmed"])
+        bot.send_message(message.chat.id, texts[lang]["already_affirmed"])
         return
 
 idx = daily_affirmation_index.get(chat_id, 0)
