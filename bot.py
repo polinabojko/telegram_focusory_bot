@@ -196,11 +196,14 @@ def pomodoro_menu(message):
 
 def start_pomodoro(chat_id, minutes): lang = get_lang(chat_id)
 
+if lang == "en":
+    text = f"🍅 Focus started — {minutes} minutes."
+else:
+    text = f"🍅 Фокус начался — {minutes} минут."
+
 bot.send_message(
     int(chat_id),
-    f"🍅 Focus started — {minutes} minutes." 
-    if lang == "en": 
-    else f"🍅 Фокус начался — {minutes} минут."
+    text
 )
 
 timer = threading.Timer(minutes * 60, pomodoro_finished, args=[chat_id])
