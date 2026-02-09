@@ -42,7 +42,13 @@ def main_menu():
     kb.add("📝 Заметки", "😊 Настроение")
     kb.add("📊 Статистика")
     return kb
-
+def plan_menu():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("➕ Добавить задачу")
+    kb.add("📅 Сегодня", "🗓 Неделя", "🗂 Месяц")
+    kb.add("📌 Без даты")
+    kb.add("⬅️ Назад")
+    return kb
 def back_menu():
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("⬅️ Назад")
@@ -152,6 +158,139 @@ def notes_list(message):
     u["state"] = None
     save_data()
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
+@bot.message_handler(func=lambda m: m.text == "📅 План")
+def open_plan(message):
+    bot.send_message(
+        message.chat.id,
+        "Планирование задач:",
+        reply_markup=plan_menu()
+    )
+@bot.message_handler(func=lambda m: m.text == "➕ Добавить задачу")
+def task_add_start(message):
+    cid = str(message.chat.id)
+    user(cid)["state"] = "task_title"
+    save_data()
+    bot.send_message(message.chat.id, "Введите название задачи:")
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "task_title")
+def task_title(message):
+    cid = str(message.chat.id)
+    user(cid)["tmp_task_title"] = message.text
+    user(cid)["state"] = "task_date"
+    save_data()
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("Сегодня", "На этой неделе")
+    kb.add("В этом месяце", "Без даты")
+    kb.add("⬅️ Назад")
+
+    bot.send_message(
+        message.chat.id,
+        "Когда выполнить задачу?",
+        reply_markup=kb
+    )
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "task_date")
+def task_date(message):
+    cid = str(message.chat.id)
+    today = date.today()
+
+    if message.text == "Сегодня":
+        task_date = today.isoformat()
+    elif message.text == "На этой неделе":
+        task_date = (today + timedelta(days=7)).isoformat()
+    elif message.text == "В этом месяце":
+        task_date = today.replace(day=28).isoformat()
+    elif message.text == "Без даты":
+        task_date = None
+    else:
+        bot.send_message(message.chat.id, "Выберите вариант кнопкой.")
+        return
+
+    user(cid)["tasks"].append({
+        "id": str(datetime.now().timestamp()),
+        "title": user(cid)["tmp_task_title"],
+        "date": task_date,
+        "done": False,
+        "created": datetime.now().isoformat()
+    })
+
+    user(cid)["state"] = None
+    save_data()
+
+    bot.send_message(
+        message.chat.id,
+        "Задача добавлена.",
+        reply_markup=plan_menu()
+    )
+def filter_tasks(cid, mode):
+    today = date.today()
+    tasks = user(cid)["tasks"]
+    result = []
+
+    for t in tasks:
+        if t["done"]:
+            continue
+        if mode == "today" and t["date"] == today.isoformat():
+            result.append(t)
+        elif mode == "week" and t["date"]:
+            d = date.fromisoformat(t["date"])
+            if today <= d <= today + timedelta(days=7):
+                result.append(t)
+        elif mode == "month" and t["date"] and t["date"][:7] == today.isoformat()[:7]:
+            result.append(t)
+        elif mode == "nodate" and t["date"] is None:
+            result.append(t)
+    return result
+@bot.message_handler(func=lambda m: m.text in ["📅 Сегодня","🗓 Неделя","🗂 Месяц","📌 Без даты"])
+def show_tasks(message):
+    cid = str(message.chat.id)
+    mapping = {
+        "📅 Сегодня": "today",
+        "🗓 Неделя": "week",
+        "🗂 Месяц": "month",
+        "📌 Без даты": "nodate"
+    }
+
+    tasks = filter_tasks(cid, mapping[message.text])
+
+    if not tasks:
+        bot.send_message(message.chat.id, "Нет задач.", reply_markup=plan_menu())
+        return
+
+    text = "Задачи:\n\n"
+    for i, t in enumerate(tasks, 1):
+        text += f"{i}. {t['title']}\n"
+
+    user(cid)["state"] = "task_done_select"
+    user(cid)["last_task_list"] = tasks
+    save_data()
+
+    bot.send_message(
+        message.chat.id,
+        text + "\nВведите номер выполненной задачи:",
+        reply_markup=back_menu()
+    )
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "task_done_select")
+def task_done(message):
+    cid = str(message.chat.id)
+    try:
+        idx = int(message.text) - 1
+        task = user(cid)["last_task_list"][idx]
+    except:
+        bot.send_message(message.chat.id, "Введите номер задачи.")
+        return
+
+    for t in user(cid)["tasks"]:
+        if t["id"] == task["id"]:
+            t["done"] = True
+
+    user(cid)["state"] = None
+    save_data()
+
+    bot.send_message(
+        message.chat.id,
+        "Задача выполнена.",
+        reply_markup=plan_menu()
+    )
 
 # ---------------- POMODORO ----------------
 
