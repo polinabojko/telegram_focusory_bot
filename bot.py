@@ -229,7 +229,31 @@ def delete_note(message):
         reply_markup=main_menu()
     )
 
-#———план———
+# ----------- ПЛАН -----------
+
+def complete_task(task):
+    task["done"] = True
+
+    if not task.get("repeat") or not task.get("date"):
+        return
+
+    d = date.fromisoformat(task["date"])
+
+    if task["repeat"] == "daily":
+        d += timedelta(days=1)
+    elif task["repeat"] == "weekly":
+        d += timedelta(weeks=1)
+    elif task["repeat"] == "monthly":
+        d = d.replace(
+            month=d.month + 1 if d.month < 12 else 1,
+            year=d.year + 1 if d.month == 12 else d.year
+        )
+
+    task["date"] = d.isoformat()
+    task["done"] = False
+    task["remind_at"] = None
+
+
 @bot.message_handler(func=lambda m: m.text == "📅 План")
 def open_plan(message):
     bot.send_message(
@@ -237,13 +261,17 @@ def open_plan(message):
         "Планирование задач:",
         reply_markup=plan_menu()
     )
+
+
 @bot.message_handler(func=lambda m: m.text == "➕ Добавить задачу")
 def task_add_start(message):
     cid = str(message.chat.id)
     user(cid)["state"] = "task_title"
     save_data()
     bot.send_message(message.chat.id, "Введите название задачи:")
-@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "task_title")
+
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_title")
 def task_title(message):
     cid = str(message.chat.id)
     user(cid)["tmp_task_title"] = message.text
@@ -255,12 +283,10 @@ def task_title(message):
     kb.add("В этом месяце", "Без даты")
     kb.add("⬅️ Назад")
 
-    bot.send_message(
-        message.chat.id,
-        "Когда выполнить задачу?",
-        reply_markup=kb
-    )
-@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "task_date")
+    bot.send_message(message.chat.id, "Когда выполнить задачу?", reply_markup=kb)
+
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_date")
 def task_date(message):
     cid = str(message.chat.id)
     today = date.today()
@@ -277,11 +303,63 @@ def task_date(message):
         bot.send_message(message.chat.id, "Выберите вариант кнопкой.")
         return
 
+    user(cid)["tmp_task_date"] = task_date
+    user(cid)["state"] = "task_repeat"
+    save_data()
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("Каждый день", "Каждую неделю")
+    kb.add("Каждый месяц", "Без повтора")
+
+    bot.send_message(message.chat.id, "Повторять задачу?", reply_markup=kb)
+
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_repeat")
+def task_repeat(message):
+    cid = str(message.chat.id)
+
+    repeat_map = {
+        "Каждый день": "daily",
+        "Каждую неделю": "weekly",
+        "Каждый месяц": "monthly",
+        "Без повтора": None
+    }
+
+    if message.text not in repeat_map:
+        bot.send_message(message.chat.id, "Выберите вариант кнопкой.")
+        return
+
+    user(cid)["tmp_task_repeat"] = repeat_map[message.text]
+    user(cid)["state"] = "task_reminder"
+    save_data()
+
+    bot.send_message(
+        message.chat.id,
+        "Если нужно напоминание, введи дату и время\nФормат: YYYY-MM-DD HH:MM\nили напиши «без напоминания»",
+        reply_markup=types.ReplyKeyboardRemove()
+    )
+
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_reminder")
+def task_reminder(message):
+    cid = str(message.chat.id)
+
+    remind_at = None
+    if message.text.lower() != "без напоминания":
+        try:
+            datetime.strptime(message.text, "%Y-%m-%d %H:%M")
+            remind_at = message.text
+        except:
+            bot.send_message(message.chat.id, "Неверный формат. Попробуй ещё раз.")
+            return
+
     user(cid)["tasks"].append({
         "id": str(datetime.now().timestamp()),
         "title": user(cid)["tmp_task_title"],
-        "date": task_date,
+        "date": user(cid)["tmp_task_date"],
         "done": False,
+        "repeat": user(cid)["tmp_task_repeat"],
+        "remind_at": remind_at,
         "created": datetime.now().isoformat()
     })
 
@@ -293,6 +371,8 @@ def task_date(message):
         "Задача добавлена.",
         reply_markup=plan_menu()
     )
+
+
 def filter_tasks(cid, mode):
     today = date.today()
     tasks = user(cid)["tasks"]
@@ -301,6 +381,7 @@ def filter_tasks(cid, mode):
     for t in tasks:
         if t["done"]:
             continue
+
         if mode == "today" and t["date"] == today.isoformat():
             result.append(t)
         elif mode == "week" and t["date"]:
@@ -311,10 +392,14 @@ def filter_tasks(cid, mode):
             result.append(t)
         elif mode == "nodate" and t["date"] is None:
             result.append(t)
+
     return result
-@bot.message_handler(func=lambda m: m.text in ["📅 Сегодня","🗓 Неделя","🗂 Месяц","📌 Без даты"])
+
+
+@bot.message_handler(func=lambda m: m.text in ["📅 Сегодня", "🗓 Неделя", "🗂 Месяц", "📌 Без даты"])
 def show_tasks(message):
     cid = str(message.chat.id)
+
     mapping = {
         "📅 Сегодня": "today",
         "🗓 Неделя": "week",
@@ -341,9 +426,12 @@ def show_tasks(message):
         text + "\nВведите номер выполненной задачи:",
         reply_markup=back_menu()
     )
-@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "task_done_select")
+
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_done_select")
 def task_done(message):
     cid = str(message.chat.id)
+
     try:
         idx = int(message.text) - 1
         task = user(cid)["last_task_list"][idx]
@@ -353,7 +441,7 @@ def task_done(message):
 
     for t in user(cid)["tasks"]:
         if t["id"] == task["id"]:
-            t["done"] = True
+            complete_task(t)
 
     user(cid)["state"] = None
     save_data()
