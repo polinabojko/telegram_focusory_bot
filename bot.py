@@ -291,6 +291,9 @@ threading.Thread(target=reminder_loop, daemon=True).start()
 # ---------- Открытие меню планирования ----------
 @bot.message_handler(func=lambda m: m.text == "📅 План")
 def open_plan(message):
+    cid = str(message.chat.id)
+    if user(cid).get("state") in ["task_done_select", "task_action"]:
+        user(cid)["state"] = None
     bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
 
 # ---------- Добавление задачи ----------
@@ -427,7 +430,10 @@ def show_tasks(message):
     save_data()
 
     bot.send_message(message.chat.id, text + "\nВведите номер выполненной задачи:", reply_markup=back_menu())
-
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("✅ Выполнено", "🔕 Отключить напоминание")
+    kb.add("⬅️ Назад")
+    bot.send_message(cid, f"Задача: {task['title']}", reply_markup=kb)
 # ---------- Отметка задачи выполненной ----------
 @bot.message_handler(func=lambda m: True)
 def task_done_select_handler(message):
@@ -491,6 +497,8 @@ def get_user_stats(cid):
 @bot.message_handler(func=lambda m: m.text == "🍅 Фокус")
 def focus_menu(message):
     cid = str(message.chat.id)
+    if user(cid).get("state") in ["task_done_select", "task_action"]:
+        user(cid)["state"] = None
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("25", "50")
     kb.add("⬅️ Главное меню")
