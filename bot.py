@@ -466,50 +466,64 @@ def run_focus_timer(cid):
     data["thread"]=t
     t.start()
 
-@bot.message_handler(func=lambda m: m.text=="🛑 Завершить фокус")
+@bot.message_handler(func=lambda m: m.text == "🛑 Завершить фокус")
 def stop_focus(message):
-    cid=str(message.chat.id)
-    data=pomodoro_timers.pop(cid,None)
-    if data and data.get("thread"):
-        try: data["thread"].cancel()
-        except: pass
+    cid = str(message.chat.id)
+
+    # Если таймер есть, останавливаем поток
+    timer_data = pomodoro_timers.get(cid)
+    if timer_data and timer_data.get("thread"):
+        timer_data["thread"].cancel()
+
+    # Завершаем фокус напрямую
     finish_focus(cid)
 
 def finish_focus(cid):
-    data=pomodoro_timers.pop(cid,None)
-    if not data:
-        return
-    stats=get_user_stats(cid)
-    stats["sessions"]+=1
-    stats["minutes"]+=data.get("minutes_total",0)
+    data = pomodoro_timers.pop(cid, None)
+    minutes_done = data.get("minutes_total", 0) if data else 0
+
+    stats = get_user_stats(cid)
+    stats["sessions"] += 1
+    stats["minutes"] += minutes_done
+
+    user(cid)["focus_state"] = None
     save_data()
-    user(cid)["focus_state"]=None
-    kb=types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🍅 Новый фокус","⬅️ Главное меню")
-    bot.send_message(cid,"Фокус завершён! Что дальше?",reply_markup=kb)
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🍅 Новый фокус", "⬅️ Главное меню")
+    bot.send_message(int(cid), "Фокус завершён! Что дальше?", reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text=="🍅 Новый фокус")
 def new_focus(message):
     focus_menu(message)
 
 # ----------------- STATS -----------------
-@bot.message_handler(func=lambda m: m.text=="📊 Статистика")
+@bot.message_handler(func=lambda m: m.text == "📊 Статистика")
 def stats(message):
-    cid=str(message.chat.id)
-    u=user(cid)
-    u["state"]=None
-    u["focus_state"]=None
-    save_data()
-    mood_stats={}
-    for m in u["moods"].values():
-        mood_stats[m]=mood_stats.get(m,0)+1
-    text=(f"📊 Статистика\n\n"
-          f"🍅 Фокус-сессий: {u['focus']['sessions']}\n"
-          f"⏱ Минут фокуса: {u['focus']['minutes']}\n\n"
-          "😊 Настроение:\n")
-    for k,v in mood_stats.items():
-        text+=f"{k} — {v}\n"
-    bot.send_message(cid,text,reply_markup=main_menu())
+    cid = str(message.chat.id)
+    u = user(cid)
+
+    # Статистика настроений
+    mood_stats = {}
+    for d, m in u.get("moods", {}).items():
+        mood_stats[m] = mood_stats.get(m, 0) + 1
+
+    # Статистика фокуса
+    focus_stats = u.get("focus", {"sessions": 0, "minutes": 0})
+
+    text = (
+        f"📊 Статистика\n\n"
+        f"🍅 Фокус-сессий: {focus_stats['sessions']}\n"
+        f"⏱ Минут фокуса: {focus_stats['minutes']}\n\n"
+        "😊 Настроение:\n"
+    )
+    if mood_stats:
+        for k,v in mood_stats.items():
+            text += f"{k} — {v}\n"
+    else:
+        text += "Нет данных\n"
+
+    bot.send_message(message.chat.id, text, reply_markup=main_menu())
 
 # ---------------- RUN ----------------
 print("Bot is running")
