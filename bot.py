@@ -291,9 +291,6 @@ threading.Thread(target=reminder_loop, daemon=True).start()
 # ---------- Открытие меню планирования ----------
 @bot.message_handler(func=lambda m: m.text == "📅 План")
 def open_plan(message):
-    cid = str(message.chat.id)
-    if user(cid).get("state") in ["task_done_select", "task_action"]:
-        user(cid)["state"] = None
     bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
 
 # ---------- Добавление задачи ----------
@@ -615,6 +612,9 @@ def new_focus(message):
 @bot.message_handler(func=lambda m: m.text == "📊 Статистика")
 def stats(message):
     u = user(message.chat.id)
+    cid = str(message.chat.id)
+    if user(cid).get("state") in ["task_done_select", "task_action"]:
+        user(cid)["state"] = None
     mood_stats = {}
     for m in u["moods"].values():
         mood_stats[m] = mood_stats.get(m, 0) + 1
