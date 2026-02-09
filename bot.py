@@ -74,6 +74,21 @@ def back(message):
     save_data()
     bot.send_message(message.chat.id, "Главное меню", reply_markup=main_menu())
 
+
+
+@bot.message_handler(func=lambda m: m.text == "⬅️ Главное меню")
+def go_main_menu(message):
+    cid = str(message.chat.id)
+    # Сбрасываем все состояния
+    u = user(cid)
+    u["state"] = None
+    u["focus_state"] = None
+    u.pop("selected_task_id", None)
+    save_data()
+
+    # Открываем главное меню
+    bot.send_message(cid, "Главное меню:", reply_markup=main_menu())
+    
 # ---------------- MOOD ----------------
 
 @bot.message_handler(func=lambda m: m.text == "😊 Настроение")
