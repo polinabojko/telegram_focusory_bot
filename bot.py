@@ -152,12 +152,84 @@ def notes_by_cat(message):
 
 @bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "notes_view")
 def notes_list(message):
-    u = user(message.chat.id)
+    cid = str(message.chat.id)
+    u = user(cid)
+
     notes = [n for n in u["notes"] if n["category"] == message.text]
-    text = "Заметки:\n\n" + "\n".join(f"• {n['title']}" for n in notes)
-    u["state"] = None
+
+    if not notes:
+        bot.send_message(message.chat.id, "В этой категории нет заметок.")
+        return
+
+    text = "Заметки:\n\n"
+    for n in notes:
+        text += f"• {n['title']}\n"
+
+    u["current_category"] = message.text
+    u["state"] = "note_select"
     save_data()
-    bot.send_message(message.chat.id, text, reply_markup=main_menu())
+
+    bot.send_message(
+        message.chat.id,
+        text + "\nНапишите название заметки, которую хотите открыть:",
+        reply_markup=back_menu()
+    )
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "notes_view")
+def notes_list(message):
+    ...
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "note_select")
+def open_note(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+
+    note = next(
+        (n for n in u["notes"]
+         if n["category"] == u["current_category"] and n["title"] == message.text),
+        None
+    )
+
+    if not note:
+        bot.send_message(
+            message.chat.id,
+            "Заметка с таким названием не найдена. Введите точное название."
+        )
+        return
+
+    u["current_note"] = note
+    u["state"] = "note_open"
+    save_data()
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🗑 Удалить заметку")
+    kb.add("⬅️ Назад")
+
+    bot.send_message(
+        message.chat.id,
+        f"📝 {note['title']}\n\n{note['text']}",
+        reply_markup=kb
+    )
+@bot.message_handler(func=lambda m: m.text == "🗑 Удалить заметку")
+def delete_note(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+
+    note = u.get("current_note")
+    if not note:
+        bot.send_message(message.chat.id, "Ошибка.")
+        return
+
+    u["notes"] = [n for n in u["notes"] if n != note]
+    u["state"] = None
+    u.pop("current_note", None)
+    save_data()
+
+    bot.send_message(
+        message.chat.id,
+        "Заметка удалена.",
+        reply_markup=main_menu()
+    )
+
+#———план———
 @bot.message_handler(func=lambda m: m.text == "📅 План")
 def open_plan(message):
     bot.send_message(
