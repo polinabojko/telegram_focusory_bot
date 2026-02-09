@@ -452,154 +452,107 @@ def task_done(message):
         reply_markup=plan_menu()
     )
 
-# ---------------- POMODORO ----------------
 
-focus_timers = {}
-break_timers = {}
-live_messages = {}
+# ----------------- POMODORO -----------------
 
+pomodoro_timers = {}  # для хранения таймеров
+pomodoro_stats = {}   # статистика фокуса: {chat_id: {"sessions": int, "minutes": int}}
 
-def focus_menu_kb():
+def get_user_stats(cid):
+    if cid not in pomodoro_stats:
+        pomodoro_stats[cid] = {"sessions": 0, "minutes": 0}
+    return pomodoro_stats[cid]
+
+def start_focus_timer(cid, minutes):
+    # создаем сообщение с кнопками
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🍅 25 минут", "🍅 50 минут")
-    kb.add("⬅️ В меню")
-    return kb
+    kb.add("🛑 Завершить фокус", "⬅️ Главное меню")
+    msg = bot.send_message(cid, f"Фокус начался — {minutes} мин.\nОсталось: {minutes} мин", reply_markup=kb)
 
+    # сохраняем таймер
+    pomodoro_timers[cid] = {
+        "minutes_left": minutes,
+        "msg_id": msg.message_id,
+        "thread": None
+    }
 
-def break_menu_kb():
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("▶️ Начать новый фокус")
-    kb.add("⏭ Пропустить перерыв")
-    kb.add("⬅️ В меню")
-    return kb
+    # запускаем обновление каждую минуту
+    update_focus(cid)
 
+def update_focus(cid):
+    data = pomodoro_timers.get(cid)
+    if not data:
+        return
 
+    minutes_left = data["minutes_left"]
+    msg_id = data["msg_id"]
+
+    if minutes_left <= 0:
+        finish_focus(cid)
+        return
+
+    # обновляем сообщение с оставшимся временем
+    try:
+        bot.edit_message_text(
+            f"Фокус идёт — осталось: {minutes_left} мин",
+            chat_id=int(cid),
+            message_id=msg_id
+        )
+    except:
+        pass
+
+    # уменьшаем счетчик
+    data["minutes_left"] -= 1
+
+    # запускаем следующую минуту
+    t = threading.Timer(60, update_focus, args=[cid])
+    data["thread"] = t
+    t.start()
+
+# ----------------- Старт фокуса -----------------
 @bot.message_handler(func=lambda m: m.text == "🍅 Фокус")
 def focus_menu(message):
-    bot.send_message(
-        message.chat.id,
-        "Выбери продолжительность фокуса:",
-        reply_markup=focus_menu_kb()
-    )
+    cid = str(message.chat.id)
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("25", "50")
+    kb.add("⬅️ Главное меню")
+    bot.send_message(cid, "Выберите длительность фокуса (минут):", reply_markup=kb)
 
-
-@bot.message_handler(func=lambda m: m.text in ["🍅 25 минут", "🍅 50 минут"])
+@bot.message_handler(func=lambda m: m.text in ["25", "50"])
 def start_focus(message):
     cid = str(message.chat.id)
-
-    if cid in focus_timers:
-        bot.send_message(message.chat.id, "Фокус уже идёт.")
-        return
-
-    minutes = 25 if "25" in message.text else 50
-
-    msg = bot.send_message(
-        message.chat.id,
-        f"⏳ Фокус начался\nОсталось: {minutes} мин",
-        reply_markup=types.ReplyKeyboardRemove()
-    )
-
-    live_messages[cid] = msg.message_id
-    tick_focus(cid, minutes, minutes)
-
-
-def tick_focus(cid, minutes_left, total_minutes):
-    if minutes_left <= 0:
-        finish_focus(cid, total_minutes)
-        return
-
-    try:
-        bot.edit_message_text(
-            chat_id=int(cid),
-            message_id=live_messages[cid],
-            text=f"⏳ Фокус\nОсталось: {minutes_left} мин"
-        )
-    except:
-        pass
-
-    t = threading.Timer(60, tick_focus, args=[cid, minutes_left - 1, total_minutes])
-    focus_timers[cid] = t
-    t.start()
-
-
-def finish_focus(cid, minutes):
-    focus_timers.pop(cid, None)
-
-    u = user(cid)
-    u.setdefault("focus", {"sessions": 0, "minutes": 0})
-    u["focus"]["sessions"] += 1
-    u["focus"]["minutes"] += minutes
+    minutes = int(message.text)
+    start_focus_timer(cid, minutes)
+    user(cid)["state"] = "focus"
     save_data()
 
-    start_break(cid)
-
-
-def start_break(cid):
-    break_minutes = 5
-
-    msg = bot.send_message(
-        int(cid),
-        f"☕ Перерыв\nОсталось: {break_minutes} мин",
-        reply_markup=break_menu_kb()
-    )
-
-    live_messages[cid] = msg.message_id
-    tick_break(cid, break_minutes)
-
-
-def tick_break(cid, minutes_left):
-    if minutes_left <= 0:
-        bot.send_message(
-            int(cid),
-            "Перерыв завершён. Готов продолжить?",
-            reply_markup=break_menu_kb()
-        )
-        return
-
-    try:
-        bot.edit_message_text(
-            chat_id=int(cid),
-            message_id=live_messages[cid],
-            text=f"☕ Перерыв\nОсталось: {minutes_left} мин"
-        )
-    except:
-        pass
-
-    t = threading.Timer(60, tick_break, args=[cid, minutes_left - 1])
-    break_timers[cid] = t
-    t.start()
-
-
-@bot.message_handler(func=lambda m: m.text == "▶️ Начать новый фокус")
-def restart_focus(message):
-    focus_menu(message)
-
-
-@bot.message_handler(func=lambda m: m.text == "⏭ Пропустить перерыв")
-def skip_break(message):
+# ----------------- Завершение фокуса вручную -----------------
+@bot.message_handler(func=lambda m: m.text == "🛑 Завершить фокус")
+def stop_focus(message):
     cid = str(message.chat.id)
-    timer = break_timers.pop(cid, None)
-    if timer:
-        timer.cancel()
-    focus_menu(message)
+    data = pomodoro_timers.pop(cid, None)
+    if data and data["thread"]:
+        data["thread"].cancel()
+    finish_focus(cid)
 
+# ----------------- Финиш фокуса -----------------
+def finish_focus(cid):
+    stats = get_user_stats(cid)
+    # вычисляем сколько минут прошло (если таймер был принудительно завершен)
+    minutes_done = pomodoro_timers.get(cid, {}).get("minutes_left", 0)
+    total_minutes = 0 if minutes_done == 0 else stats["minutes"] - minutes_done
 
-@bot.message_handler(func=lambda m: m.text == "⬅️ В меню")
-def exit_pomodoro(message):
-    cid = str(message.chat.id)
+    stats["sessions"] += 1
+    stats["minutes"] += total_minutes
+    save_data()
 
-    t1 = focus_timers.pop(cid, None)
-    t2 = break_timers.pop(cid, None)
+    # удаляем таймер, если есть
+    pomodoro_timers.pop(cid, None)
 
-    if t1: t1.cancel()
-    if t2: t2.cancel()
-
-    bot.send_message(
-        message.chat.id,
-        "Главное меню.",
-        reply_markup=main_menu()
-    )
-
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🍅 Новый фокус")
+    kb.add("⬅️ Главное меню")
+    bot.send_message(int(cid), "Фокус завершён! Что дальше?", reply_markup=kb)
 # ---------------- STATS ----------------
 
 @bot.message_handler(func=lambda m: m.text == "📊 Статистика")
