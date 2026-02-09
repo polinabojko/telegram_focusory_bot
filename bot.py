@@ -1,9 +1,7 @@
 import telebot
 from telebot import types
-import os
-import json
-import threading
-from datetime import datetime, date, timedelta
+import os, json, threading
+from datetime import date, datetime, timedelta
 
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
@@ -20,20 +18,21 @@ def load_data():
 
 def save_data():
     with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(DB, f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-DB = load_data()
+data = load_data()
 
 def user(cid):
-    if cid not in DB:
-        DB[cid] = {
+    cid = str(cid)
+    if cid not in data:
+        data[cid] = {
             "state": None,
             "notes": [],
             "tasks": [],
             "moods": {},
             "focus": {"sessions": 0, "minutes": 0}
         }
-    return DB[cid]
+    return data[cid]
 
 # ---------------- UI ----------------
 
@@ -44,19 +43,32 @@ def main_menu():
     kb.add("📊 Статистика")
     return kb
 
+def back_menu():
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("⬅️ Назад")
+    return kb
+
 # ---------------- START ----------------
 
 @bot.message_handler(commands=["start"])
 def start(message):
+    user(message.chat.id)
+    save_data()
     bot.send_message(
         message.chat.id,
         "Focusory — управление фокусом и задачами.",
         reply_markup=main_menu()
     )
 
-# =========================
-# 😊 MOOD
-# =========================
+# ---------------- BACK ----------------
+
+@bot.message_handler(func=lambda m: m.text == "⬅️ Назад")
+def back(message):
+    user(message.chat.id)["state"] = None
+    save_data()
+    bot.send_message(message.chat.id, "Главное меню", reply_markup=main_menu())
+
+# ---------------- MOOD ----------------
 
 @bot.message_handler(func=lambda m: m.text == "😊 Настроение")
 def mood_menu(message):
@@ -73,48 +85,54 @@ def save_mood(message):
     save_data()
     bot.send_message(message.chat.id, "Настроение сохранено.", reply_markup=main_menu())
 
-# =========================
-# 📝 NOTES (CATEGORIES)
-# =========================
+# ---------------- NOTES ----------------
 
 @bot.message_handler(func=lambda m: m.text == "📝 Заметки")
 def notes_menu(message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("➕ Добавить", "📂 Категории")
+    kb.add("➕ Добавить", "📂 По категории")
     kb.add("⬅️ Назад")
     bot.send_message(message.chat.id, "Заметки:", reply_markup=kb)
 
 @bot.message_handler(func=lambda m: m.text == "➕ Добавить")
-def add_note_start(message):
+def note_add(message):
     cid = str(message.chat.id)
     user(cid)["state"] = "note_category"
     save_data()
-    bot.send_message(message.chat.id, "Введите категорию заметки:")
+    bot.send_message(message.chat.id, "Категория заметки:")
 
-@bot.message_handler(func=lambda m: user(str(m.chat.id))["state"] == "note_category")
-def note_category(message):
-    cid = str(message.chat.id)
-    user(cid)["tmp_cat"] = message.text
-    user(cid)["state"] = "note_text"
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "note_category")
+def note_cat(message):
+    u = user(message.chat.id)
+    u["tmp_cat"] = message.text
+    u["state"] = "note_title"
     save_data()
-    bot.send_message(message.chat.id, "Введите текст заметки:")
+    bot.send_message(message.chat.id, "Название заметки:")
 
-@bot.message_handler(func=lambda m: user(str(m.chat.id))["state"] == "note_text")
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "note_title")
+def note_title(message):
+    u = user(message.chat.id)
+    u["tmp_title"] = message.text
+    u["state"] = "note_text"
+    save_data()
+    bot.send_message(message.chat.id, "Текст заметки:")
+
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "note_text")
 def note_text(message):
-    cid = str(message.chat.id)
-    user(cid)["notes"].append({
-        "category": user(cid)["tmp_cat"],
-        "title": message.text[:30],
-        "text": message.text
+    u = user(message.chat.id)
+    u["notes"].append({
+        "category": u["tmp_cat"],
+        "title": u["tmp_title"],
+        "text": message.text,
+        "created": datetime.now().isoformat()
     })
-    user(cid)["state"] = None
+    u["state"] = None
     save_data()
     bot.send_message(message.chat.id, "Заметка сохранена.", reply_markup=main_menu())
 
-@bot.message_handler(func=lambda m: m.text == "📂 Категории")
-def show_categories(message):
-    cid = str(message.chat.id)
-    cats = sorted(set(n["category"] for n in user(cid)["notes"]))
+@bot.message_handler(func=lambda m: m.text == "📂 По категории")
+def notes_by_cat(message):
+    cats = sorted(set(n["category"] for n in user(message.chat.id)["notes"]))
     if not cats:
         bot.send_message(message.chat.id, "Нет заметок.", reply_markup=main_menu())
         return
@@ -122,88 +140,64 @@ def show_categories(message):
     for c in cats:
         kb.add(c)
     kb.add("⬅️ Назад")
+    user(message.chat.id)["state"] = "notes_view"
+    save_data()
     bot.send_message(message.chat.id, "Выбери категорию:", reply_markup=kb)
 
-@bot.message_handler(func=lambda m: m.text not in main_menu().keyboard and m.text != "⬅️ Назад")
-def category_notes(message):
-    cid = str(message.chat.id)
-    notes = [n for n in user(cid)["notes"] if n["category"] == message.text]
-    if not notes:
-        return
-    user(cid)["state"] = "view_note"
-    user(cid)["current_notes"] = notes
+@bot.message_handler(func=lambda m: user(m.chat.id)["state"] == "notes_view")
+def notes_list(message):
+    u = user(message.chat.id)
+    notes = [n for n in u["notes"] if n["category"] == message.text]
+    text = "Заметки:\n\n" + "\n".join(f"• {n['title']}" for n in notes)
+    u["state"] = None
     save_data()
-    text = "Заметки:\n" + "\n".join(n["title"] for n in notes)
-    bot.send_message(message.chat.id, text + "\n\nНапиши название заметки:")
+    bot.send_message(message.chat.id, text, reply_markup=main_menu())
 
-@bot.message_handler(func=lambda m: user(str(m.chat.id))["state"] == "view_note")
-def view_note(message):
-    cid = str(message.chat.id)
-    for n in user(cid)["current_notes"]:
-        if n["title"] == message.text:
-            kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            kb.add("🗑 Удалить", "⬅️ Назад")
-            user(cid)["current_view"] = n
-            save_data()
-            bot.send_message(message.chat.id, n["text"], reply_markup=kb)
-            return
-
-@bot.message_handler(func=lambda m: m.text == "🗑 Удалить")
-def delete_note(message):
-    cid = str(message.chat.id)
-    user(cid)["notes"].remove(user(cid)["current_view"])
-    user(cid)["state"] = None
-    save_data()
-    bot.send_message(message.chat.id, "Заметка удалена.", reply_markup=main_menu())
-
-# =========================
-# 🍅 POMODORO
-# =========================
+# ---------------- POMODORO ----------------
 
 timers = {}
 
 @bot.message_handler(func=lambda m: m.text == "🍅 Фокус")
 def focus_menu(message):
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("25 минут", "50 минут")
+    kb.add("25", "50")
     kb.add("⬅️ Назад")
-    bot.send_message(message.chat.id, "Выбери время фокуса:", reply_markup=kb)
+    bot.send_message(message.chat.id, "Минуты фокуса:", reply_markup=kb)
 
-@bot.message_handler(func=lambda m: m.text in ["25 минут","50 минут"])
+@bot.message_handler(func=lambda m: m.text in ["25","50"])
 def start_focus(message):
     cid = str(message.chat.id)
-    minutes = int(message.text.split()[0])
-    bot.send_message(message.chat.id, f"Фокус начался на {minutes} минут.")
+    minutes = int(message.text)
+    bot.send_message(message.chat.id, f"Фокус начался — {minutes} минут.", reply_markup=back_menu())
     timer = threading.Timer(minutes*60, finish_focus, args=[cid, minutes])
     timers[cid] = timer
     timer.start()
 
 def finish_focus(cid, minutes):
-    user(cid)["focus"]["sessions"] += 1
-    user(cid)["focus"]["minutes"] += minutes
+    u = user(cid)
+    u["focus"]["sessions"] += 1
+    u["focus"]["minutes"] += minutes
     save_data()
-    bot.send_message(cid, "Фокус завершён. Сделай перерыв.", reply_markup=main_menu())
+    bot.send_message(int(cid), "Фокус завершён.", reply_markup=main_menu())
 
-# =========================
-# 📊 STATS
-# =========================
+# ---------------- STATS ----------------
 
 @bot.message_handler(func=lambda m: m.text == "📊 Статистика")
 def stats(message):
-    cid = str(message.chat.id)
-    moods = {}
-    for m in user(cid)["moods"].values():
-        moods[m] = moods.get(m, 0) + 1
-    mood_text = "\n".join(f"{k} — {v}" for k,v in moods.items()) or "Нет данных"
+    u = user(message.chat.id)
+    mood_stats = {}
+    for m in u["moods"].values():
+        mood_stats[m] = mood_stats.get(m, 0) + 1
 
-    focus = user(cid)["focus"]
     text = (
-        "📊 Статистика\n\n"
-        f"😊 Настроение:\n{mood_text}\n\n"
-        f"🍅 Фокус:\n"
-        f"Сессий: {focus['sessions']}\n"
-        f"Минут: {focus['minutes']}"
+        f"📊 Статистика\n\n"
+        f"🍅 Фокус-сессий: {u['focus']['sessions']}\n"
+        f"⏱ Минут фокуса: {u['focus']['minutes']}\n\n"
+        "😊 Настроение:\n"
     )
+    for k,v in mood_stats.items():
+        text += f"{k} — {v}\n"
+
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
 
 # ---------------- RUN ----------------
