@@ -230,12 +230,12 @@ def complete_task(task):
 
 def reminder_loop():
     while True:
-        now=datetime.now().strftime("%Y-%m-%d %H:%M")
-        for cid,u in all_users().items():
-            for task in u["tasks"]:
-                if task.get("remind_at")==now:
-                    bot.send_message(int(cid),f"⏰ Напоминание о задаче: {task['title']}")
-                    task["remind_at"]=None
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for cid, udata in data.items():  # берём всех пользователей
+            for task in udata.get("tasks", []):
+                if task.get("remind_at") == now:
+                    bot.send_message(int(cid), f"⏰ Напоминание о задаче: {task['title']}")
+                    task["remind_at"] = None  # чтобы не повторялось
                     save_data()
         time.sleep(60)
 
@@ -366,7 +366,15 @@ def task_done_select_handler(message):
     cid = str(message.chat.id)
     u = user(cid)
 
-    # Проверяем, ввёл ли пользователь номер задачи
+    # --- Если нажали "Назад" ---
+    if message.text == "⬅️ Назад":
+        u["state"] = None
+        u.pop("last_task_list", None)
+        save_data()
+        bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
+        return
+
+    # --- Если ввели цифру ---
     if message.text.isdigit():
         idx = int(message.text) - 1
         tasks = u.get("last_task_list", [])
@@ -383,8 +391,10 @@ def task_done_select_handler(message):
             bot.send_message(cid, f"Задача: {task['title']}", reply_markup=kb)
         else:
             bot.send_message(cid, "Введите корректный номер задачи.")
-    else:
-        bot.send_message(cid, "Введите номер задачи цифрой.")
+        return
+
+    # --- Если не цифра и не Назад ---
+    bot.send_message(cid, "Введите номер задачи цифрой или нажмите '⬅️ Назад'.")
 # ---------- Действия с задачей ----------
 @bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action")
 def task_action(message):
