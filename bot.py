@@ -387,7 +387,17 @@ def task_reminder(message):
         reply_markup=plan_menu()
     )
 
-
+def reminder_loop():
+    while True:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for cid, udata in all_users().items():  # функция возвращает всех пользователей
+            for task in udata["tasks"]:
+                if task.get("remind_at") == now:
+                    bot.send_message(int(cid), f"⏰ Напоминание о задаче: {task['title']}")
+                    task["remind_at"] = None  # чтобы не повторялось
+                    save_data()
+        time.sleep(60)
+threading.Thread(target=reminder_loop, daemon=True).start()
 def filter_tasks(cid, mode):
     today = date.today()
     tasks = user(cid)["tasks"]
@@ -626,6 +636,7 @@ def stats(message):
         text += f"{k} — {v}\n"
 
     bot.send_message(message.chat.id, text, reply_markup=main_menu())
+
 
 # ---------------- RUN ----------------
 
