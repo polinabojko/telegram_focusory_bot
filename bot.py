@@ -250,6 +250,49 @@ def task_date(m):
         [T[l]["month"], T[l]["nodate"]],
         [T[l]["back"]]
     ))
+@bot.message_handler(func=lambda m: m.text in ["📂 Посмотреть", "📂 View"])
+def view_tasks_menu(m):
+    l = lang(cid(m))
+    set_state(cid(m), "view_tasks")
+    bot.send_message(
+        m.chat.id,
+        "📅",
+        reply_markup=kb(
+            [T[l]["today"], T[l]["week"]],
+            [T[l]["month"], T[l]["nodate"]],
+            [T[l]["back"]]
+        )
+    )
+    @bot.message_handler(func=lambda m: get_state(cid(m)) == "view_tasks")
+def show_tasks(m):
+    c = cid(m)
+    l = lang(c)
+    tasks = data["tasks"].get(c, [])
+    today_date = date.today()
+
+    filtered = []
+
+    for t in tasks:
+        d = t["date"]
+        if m.text == T[l]["today"] and d == today():
+            filtered.append(t)
+        elif m.text == T[l]["week"] and d == "week":
+            filtered.append(t)
+        elif m.text == T[l]["month"] and d == "month":
+            filtered.append(t)
+        elif m.text == T[l]["nodate"] and d is None:
+            filtered.append(t)
+
+    if not filtered:
+        bot.send_message(m.chat.id, "Задач нет." if l=="ru" else "No tasks.")
+        return
+
+    text = "📋 Задачи:\n\n" if l=="ru" else "📋 Tasks:\n\n"
+    for i, t in enumerate(filtered, 1):
+        status = "✔️" if t["done"] else "◻️"
+        text += f"{i}. {status} {t['text']}\n"
+
+    bot.send_message(m.chat.id, text)
 
 @bot.message_handler(func=lambda m: get_state(cid(m)) == "task_date")
 def choose_date(m):
@@ -286,10 +329,30 @@ def save_task(m):
 def notes(m):
     l = lang(cid(m))
     set_state(cid(m), "notes")
-    bot.send_message(m.chat.id, "📝", reply_markup=kb(
-        [T[l]["add_note"]],
-        [T[l]["back"]]
-    ))
+    bot.send_message(
+        m.chat.id,
+        "📝",
+        reply_markup=kb(
+            [T[l]["add_note"], "📂 Просмотреть заметки" if l=="ru" else "📂 View notes"],
+            [T[l]["back"]]
+        )
+    )
+@bot.message_handler(func=lambda m: m.text in ["📂 Просмотреть заметки", "📂 View notes"])
+def view_notes(m):
+    c = cid(m)
+    l = lang(c)
+    notes = data["notes"].get(c, [])
+
+    if not notes:
+        bot.send_message(m.chat.id, "Заметок пока нет." if l=="ru" else "No notes yet.")
+        return
+
+    text = "🗂 Последние заметки:\n\n" if l=="ru" else "🗂 Recent notes:\n\n"
+
+    for n in notes[-5:][::-1]:
+        text += f"• {n['title']}\n"
+
+    bot.send_message(m.chat.id, text)
 
 @bot.message_handler(func=lambda m: m.text in ["➕ Новая заметка", "➕ New note"])
 def note_title(m):
