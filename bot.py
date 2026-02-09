@@ -231,12 +231,17 @@ def complete_task(task):
 def reminder_loop():
     while True:
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        for cid, udata in data.items():  # берём всех пользователей
+
+        for cid, udata in data.items():
             for task in udata.get("tasks", []):
                 if task.get("remind_at") == now:
-                    bot.send_message(int(cid), f"⏰ Напоминание о задаче: {task['title']}")
-                    task["remind_at"] = None  # чтобы не повторялось
+                    bot.send_message(
+                        int(cid),
+                        f"⏰ Напоминание о задаче:\n\n📌 {task['title']}"
+                    )
+                    task["remind_at"] = None
                     save_data()
+
         time.sleep(60)
 
 threading.Thread(target=reminder_loop, daemon=True).start()
@@ -366,35 +371,79 @@ def task_done_select_handler(message):
     cid = str(message.chat.id)
     u = user(cid)
 
-    # --- Если нажали "Назад" ---
+    # ⬅️ Назад — возвращаемся в план
     if message.text == "⬅️ Назад":
         u["state"] = None
         u.pop("last_task_list", None)
         save_data()
-        bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
+        bot.send_message(cid, "Планирование задач:", reply_markup=plan_menu())
         return
 
-    # --- Если ввели цифру ---
-    if message.text.isdigit():
-        idx = int(message.text) - 1
-        tasks = u.get("last_task_list", [])
-        if 0 <= idx < len(tasks):
-            task = tasks[idx]
-            u["selected_task_id"] = task["id"]
-            u["state"] = "task_action"
-            save_data()
-
-            # Кнопки для действий с выбранной задачей
-            kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            kb.add("✅ Выполнено", "🔕 Отключить напоминание")
-            kb.add("⬅️ Назад")
-            bot.send_message(cid, f"Задача: {task['title']}", reply_markup=kb)
-        else:
-            bot.send_message(cid, "Введите корректный номер задачи.")
+    # Ожидаем номер задачи
+    if not message.text.isdigit():
+        bot.send_message(cid, "Введите номер задачи цифрой.")
         return
 
-    # --- Если не цифра и не Назад ---
-    bot.send_message(cid, "Введите номер задачи цифрой или нажмите '⬅️ Назад'.")
+    idx = int(message.text) - 1
+    tasks = u.get("last_task_list", [])
+
+    if idx < 0 or idx >= len(tasks):
+        bot.send_message(cid, "Введите корректный номер задачи.")
+        return
+
+    task = tasks[idx]
+    u["selected_task_id"] = task["id"]
+    u["state"] = "task_action"
+    save_data()
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("✅ Выполнено", "🔕 Отключить напоминание")
+    kb.add("⬅️ Назад")
+
+    bot.send_message(
+        cid,
+        f"Задача:\n\n📌 {task['title']}",
+        reply_markup=kb
+    )
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action")
+def task_action_handler(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+
+    tid = u.get("selected_task_id")
+    if not tid:
+        return
+
+    task = next((t for t in u["tasks"] if t["id"] == tid), None)
+    if not task:
+        bot.send_message(cid, "Задача не найдена.")
+        return
+
+    if message.text == "✅ Выполнено":
+        complete_task(task)
+        text = "✅ Задача выполнена."
+
+    elif message.text == "🔕 Отключить напоминание":
+        task["remind_at"] = None
+        text = "🔕 Напоминание отключено."
+
+    elif message.text == "⬅️ Назад":
+        u["state"] = None
+        u.pop("selected_task_id", None)
+        save_data()
+        bot.send_message(cid, "Планирование задач:", reply_markup=plan_menu())
+        return
+
+    else:
+        return
+
+    # сброс состояния
+    u["state"] = None
+    u.pop("selected_task_id", None)
+    u.pop("last_task_list", None)
+    save_data()
+
+    bot.send_message(cid, text, reply_markup=plan_menu())
 # ---------- Действия с задачей ----------
 @bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action")
 def task_action(message):
