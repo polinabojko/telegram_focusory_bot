@@ -428,30 +428,44 @@ def show_tasks(message):
     )
 
 
-@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_done_select")
-def task_done(message):
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action" and m.text == "✅ Выполнено")
+def task_mark_done(message):
     cid = str(message.chat.id)
-
-    try:
-        idx = int(message.text) - 1
-        task = user(cid)["last_task_list"][idx]
-    except:
-        bot.send_message(message.chat.id, "Введите номер задачи.")
-        return
+    tid = user(cid).get("selected_task_id")
 
     for t in user(cid)["tasks"]:
-        if t["id"] == task["id"]:
+        if t["id"] == tid:
             complete_task(t)
 
     user(cid)["state"] = None
+    user(cid).pop("selected_task_id", None)
     save_data()
 
-    bot.send_message(
-        message.chat.id,
-        "Задача выполнена.",
-        reply_markup=plan_menu()
-    )
+    bot.send_message(message.chat.id, "Задача выполнена.", reply_markup=plan_menu())
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action" and m.text == "🔕 Отключить напоминание")
+def task_disable_reminder(message):
+    cid = str(message.chat.id)
+    tid = user(cid).get("selected_task_id")
 
+    for t in user(cid)["tasks"]:
+        if t["id"] == tid:
+            t["remind_at"] = None
+
+    user(cid)["state"] = None
+    user(cid).pop("selected_task_id", None)
+    save_data()
+
+    bot.send_message(message.chat.id, "Напоминание отключено.", reply_markup=plan_menu())
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action" and m.text == "⬅️ Назад")
+def task_action_back(message):
+    cid = str(message.chat.id)
+    user(cid)["state"] = None
+    user(cid).pop("selected_task_id", None)
+    save_data()
+
+    bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
+    
 
 # ----------------- POMODORO -----------------
 
