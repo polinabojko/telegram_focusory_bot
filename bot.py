@@ -5,10 +5,10 @@ from datetime import date, datetime, timedelta
 
 TOKEN = os.getenv("TOKEN")
 bot = telebot.TeleBot(TOKEN)
+
 DATA_FILE = "data.json"
 
 # ---------------- DATA ----------------
-
 def load_data():
     if not os.path.exists(DATA_FILE):
         return {}
@@ -29,7 +29,7 @@ def user(cid):
             "notes": [],
             "tasks": [],
             "moods": {},
-            "focus": {"sessions": 0, "minutes": 0},
+            "focus": {"sessions":0,"minutes":0},
             "focus_state": None
         }
     return data[cid]
@@ -38,7 +38,6 @@ def all_users():
     return data
 
 # ---------------- UI ----------------
-
 def main_menu():
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("📅 План", "🍅 Фокус")
@@ -51,7 +50,7 @@ def plan_menu():
     kb.add("➕ Добавить задачу")
     kb.add("📅 Сегодня", "🗓 Неделя", "🗂 Месяц")
     kb.add("📌 Без даты")
-    kb.add("⬅️ Назад")
+    kb.add("⬅️ Главное меню")
     return kb
 
 def back_menu():
@@ -60,47 +59,196 @@ def back_menu():
     return kb
 
 # ---------------- START ----------------
-
 @bot.message_handler(commands=["start"])
 def start(message):
     user(message.chat.id)
     save_data()
     bot.send_message(message.chat.id, "Focusory — управление фокусом и задачами.", reply_markup=main_menu())
 
-# ---------------- ПЛАН И НАПОМИНАНИЯ ----------------
+# ---------------- BACK ----------------
+@bot.message_handler(func=lambda m: m.text == "⬅️ Главное меню")
+def go_main_menu(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    u["state"] = None
+    u["focus_state"] = None
+    u.pop("selected_task_id", None)
+    save_data()
+    bot.send_message(cid, "Главное меню:", reply_markup=main_menu())
 
+# ---------------- MOOD ----------------
+@bot.message_handler(func=lambda m: m.text == "😊 Настроение")
+def mood_menu(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    u["state"] = None
+    u["focus_state"] = None
+    save_data()
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("😄","🙂","😐","🙁","😣")
+    kb.add("⬅️ Главное меню")
+    bot.send_message(cid,"Выбери настроение:", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text in ["😄","🙂","😐","🙁","😣"])
+def save_mood(message):
+    cid = str(message.chat.id)
+    today = date.today().isoformat()
+    u = user(cid)
+    u["moods"][today] = message.text
+    save_data()
+    bot.send_message(cid,"Настроение сохранено.", reply_markup=main_menu())
+
+# ---------------- NOTES ----------------
+@bot.message_handler(func=lambda m: m.text == "📝 Заметки")
+def notes_menu(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    u["state"] = None
+    u["focus_state"] = None
+    save_data()
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("➕ Добавить","📂 По категории")
+    kb.add("⬅️ Главное меню")
+    bot.send_message(cid,"Заметки:", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text == "➕ Добавить")
+def note_add(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    u["state"] = "note_category"
+    save_data()
+    bot.send_message(cid,"Категория заметки:")
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="note_category")
+def note_cat(message):
+    u = user(message.chat.id)
+    u["tmp_cat"] = message.text
+    u["state"] = "note_title"
+    save_data()
+    bot.send_message(message.chat.id,"Название заметки:")
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="note_title")
+def note_title(message):
+    u = user(message.chat.id)
+    u["tmp_title"] = message.text
+    u["state"] = "note_text"
+    save_data()
+    bot.send_message(message.chat.id,"Текст заметки:")
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="note_text")
+def note_text(message):
+    u = user(message.chat.id)
+    u["notes"].append({
+        "category": u["tmp_cat"],
+        "title": u["tmp_title"],
+        "text": message.text,
+        "created": datetime.now().isoformat()
+    })
+    u["state"] = None
+    save_data()
+    bot.send_message(message.chat.id,"Заметка сохранена.", reply_markup=main_menu())
+
+@bot.message_handler(func=lambda m: m.text=="📂 По категории")
+def notes_by_cat(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    cats = sorted(set(n["category"] for n in u["notes"]))
+    if not cats:
+        bot.send_message(cid,"Нет заметок.", reply_markup=main_menu())
+        return
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    for c in cats:
+        kb.add(c)
+    kb.add("⬅️ Главное меню")
+    u["state"] = "notes_view"
+    save_data()
+    bot.send_message(cid,"Выбери категорию:", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="notes_view")
+def notes_list(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    notes = [n for n in u["notes"] if n["category"]==message.text]
+    if not notes:
+        bot.send_message(cid,"В этой категории нет заметок.")
+        return
+    text="Заметки:\n\n"
+    for n in notes:
+        text+=f"• {n['title']}\n"
+    u["current_category"]=message.text
+    u["state"]="note_select"
+    save_data()
+    bot.send_message(cid,text+"\nНапишите название заметки, чтобы открыть:", reply_markup=back_menu())
+
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="note_select")
+def open_note(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    note = next((n for n in u["notes"] if n["category"]==u["current_category"] and n["title"]==message.text),None)
+    if not note:
+        bot.send_message(cid,"Заметка не найдена. Введите точное название.")
+        return
+    u["current_note"]=note
+    u["state"]="note_open"
+    save_data()
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🗑 Удалить заметку","⬅️ Назад")
+    bot.send_message(cid,f"📝 {note['title']}\n\n{note['text']}", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text=="🗑 Удалить заметку")
+def delete_note(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    note = u.get("current_note")
+    if not note:
+        bot.send_message(cid,"Ошибка.")
+        return
+    u["notes"]=[n for n in u["notes"] if n!=note]
+    u["state"]=None
+    u.pop("current_note",None)
+    save_data()
+    bot.send_message(cid,"Заметка удалена.", reply_markup=main_menu())
+
+# ----------------- PLAN -----------------
 def complete_task(task):
-    task["done"] = True
+    task["done"]=True
     if not task.get("repeat") or not task.get("date"):
         return
     d = date.fromisoformat(task["date"])
-    if task["repeat"] == "daily":
-        d += timedelta(days=1)
-    elif task["repeat"] == "weekly":
-        d += timedelta(weeks=1)
-    elif task["repeat"] == "monthly":
-        if d.month == 12:
-            d = d.replace(year=d.year+1, month=1)
+    if task["repeat"]=="daily":
+        d+=timedelta(days=1)
+    elif task["repeat"]=="weekly":
+        d+=timedelta(weeks=1)
+    elif task["repeat"]=="monthly":
+        if d.month==12:
+            d=d.replace(year=d.year+1, month=1)
         else:
-            d = d.replace(month=d.month+1)
-    task["date"] = d.isoformat()
-    task["done"] = False
-    task["remind_at"] = None
+            d=d.replace(month=d.month+1)
+    task["date"]=d.isoformat()
+    task["done"]=False
+    task["remind_at"]=None
 
-# Фоновый цикл напоминаний
 def reminder_loop():
     while True:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        for cid, udata in all_users().items():
-            for task in udata["tasks"]:
-                if task.get("remind_at") == now:
-                    bot.send_message(int(cid), f"⏰ Напоминание о задаче: {task['title']}")
-                    task["remind_at"] = None
+        now=datetime.now().strftime("%Y-%m-%d %H:%M")
+        for cid,u in all_users().items():
+            for task in u["tasks"]:
+                if task.get("remind_at")==now:
+                    bot.send_message(int(cid),f"⏰ Напоминание о задаче: {task['title']}")
+                    task["remind_at"]=None
                     save_data()
         time.sleep(60)
 
 threading.Thread(target=reminder_loop, daemon=True).start()
 
+@bot.message_handler(func=lambda m: m.text=="📅 План")
+def open_plan(message):
+    cid = str(message.chat.id)
+    u = user(cid)
+    u["state"]=None
+    u["focus_state"]=None
+    save_data()
+    bot.send_message(cid,"Планирование задач:", reply_markup=plan_menu())
 # Добавление задачи
 @bot.message_handler(func=lambda m: m.text == "➕ Добавить задачу")
 def task_add_start(message):
@@ -179,6 +327,7 @@ def task_reminder(message):
     save_data()
     bot.send_message(cid,"Задача добавлена.", reply_markup=plan_menu())
 
+# Добавление задачи, повтор, напоминания — как в твоем коде выше (оставляем без изменений)
 # Фильтр и показ задач
 def filter_tasks(cid, mode):
     today = date.today()
@@ -211,184 +360,155 @@ def show_tasks(message):
     save_data()
     bot.send_message(cid, text+"\nВведите номер задачи для действий:", reply_markup=back_menu())
 
-@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="task_done_select")
-def task_done_select(message):
+# ---------- Обработка выбора задачи ----------
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_done_select")
+def task_done_select_handler(message):
     cid = str(message.chat.id)
     u = user(cid)
-    try:
-        idx = int(message.text)-1
-        task = u["last_task_list"][idx]
-    except:
-        bot.send_message(cid,"Введите корректный номер задачи.")
-        return
-    u["selected_task_id"] = task["id"]
-    u["state"] = "task_action"
-    save_data()
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("✅ Выполнено","🔕 Отключить напоминание")
-    kb.add("⬅️ Назад")
-    bot.send_message(cid,f"Задача: {task['title']}", reply_markup=kb)
 
-@bot.message_handler(func=lambda m: user(m.chat.id).get("state")=="task_action")
+    # Проверяем, ввёл ли пользователь номер задачи
+    if message.text.isdigit():
+        idx = int(message.text) - 1
+        tasks = u.get("last_task_list", [])
+        if 0 <= idx < len(tasks):
+            task = tasks[idx]
+            u["selected_task_id"] = task["id"]
+            u["state"] = "task_action"
+            save_data()
+
+            # Кнопки для действий с выбранной задачей
+            kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            kb.add("✅ Выполнено", "🔕 Отключить напоминание")
+            kb.add("⬅️ Назад")
+            bot.send_message(cid, f"Задача: {task['title']}", reply_markup=kb)
+        else:
+            bot.send_message(cid, "Введите корректный номер задачи.")
+    else:
+        bot.send_message(cid, "Введите номер задачи цифрой.")
+# ---------- Действия с задачей ----------
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action")
 def task_action(message):
     cid = str(message.chat.id)
     u = user(cid)
     tid = u.get("selected_task_id")
-    if not tid: return
-    task = next((x for x in u["tasks"] if x["id"]==tid), None)
-    if not task: return
-    if message.text=="✅ Выполнено": complete_task(task); bot.send_message(cid,"Задача выполнена.",reply_markup=plan_menu())
-    elif message.text=="🔕 Отключить напоминание": task["remind_at"]=None; bot.send_message(cid,"Напоминание отключено.",reply_markup=plan_menu())
-    elif message.text=="⬅️ Назад": bot.send_message(cid,"Планирование задач:",reply_markup=plan_menu())
-    u["state"]=None
-    u.pop("selected_task_id",None)
-    save_data()
-
-# ---------------- POMODORO с перерывами ----------------
-
-pomodoro_timers = {}  # таймеры фокуса/перерыва по chat_id
-
-def get_user_stats(cid):
-    return user(cid)["focus"]
-
-# Меню выбора фокуса
-@bot.message_handler(func=lambda m: m.text=="🍅 Фокус")
-def focus_menu(message):
-    cid = str(message.chat.id)
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("25","50")
-    kb.add("⬅️ Главное меню")
-    bot.send_message(cid,"Выберите длительность фокуса (минут):",reply_markup=kb)
-
-# Старт фокуса
-@bot.message_handler(func=lambda m: m.text in ["25","50"])
-def start_focus(message):
-    cid = str(message.chat.id)
-    minutes = int(message.text)
-    user(cid)["focus_state"]="running"
-    save_data()
-
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🛑 Завершить фокус","⬅️ Главное меню")
-    msg = bot.send_message(cid,f"Фокус начался — {minutes} мин",reply_markup=kb)
-
-    # Контрольные минуты (через сколько осталось уведомлять)
-    if minutes==25: notify_points=[15,20]  # через 10 и 5 мин
-    elif minutes==50: notify_points=[20,40,45] # через 30,10,5 мин
-    else: notify_points=[]
-
-    pomodoro_timers[cid] = {
-        "minutes_total": minutes,
-        "minutes_left": minutes,
-        "notify_points": notify_points,
-        "thread": None,
-        "message_id": msg.message_id,
-        "type":"focus"
-    }
-    threading.Thread(target=run_timer, args=[cid], daemon=True).start()
-
-# Универсальный таймер для фокуса/перерыва
-def run_timer(cid):
-    data = pomodoro_timers.get(cid)
-    if not data: return
-    state = user(cid).get("focus_state")
-    if state not in ["running","break"]: return
-
-    if data["minutes_left"] <= 0:
-        if data["type"]=="focus":
-            finish_focus(cid)
-        else:
-            finish_break(cid)
+    if not tid:
         return
 
-    minutes_passed = data["minutes_total"] - data["minutes_left"]
+    task = next((t for t in u["tasks"] if t["id"] == tid), None)
+    if not task:
+        return
+
+    if message.text == "✅ Выполнено":
+        complete_task(task)
+        bot.send_message(cid, f"Задача '{task['title']}' выполнена.", reply_markup=plan_menu())
+    elif message.text == "🔕 Отключить напоминание":
+        task["remind_at"] = None
+        bot.send_message(cid, f"Напоминание для задачи '{task['title']}' отключено.", reply_markup=plan_menu())
+    elif message.text == "⬅️ Назад":
+        bot.send_message(cid, "Планирование задач:", reply_markup=plan_menu())
+
+    u["state"] = None
+    u.pop("selected_task_id", None)
+    save_data()
+# Фильтр и отображение задач, отметка выполненных — аналогично, добавляем кнопки "✅ Выполнено" и "🔕 Отключить напоминание"
+# ----------------- POMODORO -----------------
+pomodoro_timers = {}
+
+def get_user_stats(cid):
+    u = user(cid)
+    return u["focus"]
+
+@bot.message_handler(func=lambda m: m.text=="🍅 Фокус")
+def focus_menu(message):
+    cid=str(message.chat.id)
+    u=user(cid)
+    u["state"]=None
+    u["focus_state"]=None
+    save_data()
+    kb=types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("25","50")
+    kb.add("⬅️ Главное меню")
+    bot.send_message(cid,"Выберите длительность фокуса (минут):", reply_markup=kb)
+
+@bot.message_handler(func=lambda m: m.text in ["25","50"])
+def start_focus(message):
+    cid=str(message.chat.id)
+    minutes=int(message.text)
+    u=user(cid)
+    u["focus_state"]="running"
+    save_data()
+    kb=types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("🛑 Завершить фокус","⬅️ Главное меню")
+    bot.send_message(cid,f"Фокус начался — {minutes} мин", reply_markup=kb)
+
+    if minutes==25:
+        notify_points=[15,20]
+    else:
+        notify_points=[20,40,45]
+
+    pomodoro_timers[cid]={"minutes_total":minutes,"minutes_left":minutes,"notify_points":notify_points,"thread":None}
+    run_focus_timer(cid)
+
+def run_focus_timer(cid):
+    data=pomodoro_timers.get(cid)
+    if not data or user(cid).get("focus_state")!="running":
+        return
+    if data["minutes_left"]<=0:
+        finish_focus(cid)
+        return
+    minutes_passed=data["minutes_total"]-data["minutes_left"]
     if minutes_passed in data["notify_points"]:
-        kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        if data["type"]=="focus":
-            kb.add("🛑 Завершить фокус","⬅️ Главное меню")
-            bot.send_message(cid,f"⏱ Осталось {data['minutes_left']} мин",reply_markup=kb)
-        else:
-            kb.add("⏭ Пропустить перерыв","🍅 Новый фокус","⬅️ Главное меню")
-            bot.send_message(cid,f"⏱ Перерыв: {data['minutes_left']} мин осталось",reply_markup=kb)
+        kb=types.ReplyKeyboardMarkup(resize_keyboard=True)
+        kb.add("🛑 Завершить фокус","⬅️ Главное меню")
+        bot.send_message(cid,f"⏱ Осталось {data['minutes_left']} мин",reply_markup=kb)
+    data["minutes_left"]-=1
+    t=threading.Timer(60,run_focus_timer,args=[cid])
+    data["thread"]=t
+    t.start()
 
-    data["minutes_left"] -= 1
-    threading.Timer(60, run_timer, args=[cid]).start()
-
-# Завершение фокуса вручную
 @bot.message_handler(func=lambda m: m.text=="🛑 Завершить фокус")
 def stop_focus(message):
-    cid = str(message.chat.id)
-    user(cid)["focus_state"]="finished"
-    tdata = pomodoro_timers.pop(cid,None)
-    if tdata and tdata.get("thread"): tdata["thread"].cancel()
+    cid=str(message.chat.id)
+    data=pomodoro_timers.pop(cid,None)
+    if data and data.get("thread"):
+        try: data["thread"].cancel()
+        except: pass
     finish_focus(cid)
 
-# Завершение фокуса
 def finish_focus(cid):
-    data = pomodoro_timers.pop(cid,None)
-    minutes_done = data.get("minutes_total",0) if data else 0
-    stats = get_user_stats(cid)
-    stats["sessions"] += 1
-    stats["minutes"] += minutes_done
+    data=pomodoro_timers.pop(cid,None)
+    if not data:
+        return
+    stats=get_user_stats(cid)
+    stats["sessions"]+=1
+    stats["minutes"]+=data.get("minutes_total",0)
+    save_data()
     user(cid)["focus_state"]=None
-    save_data()
-    # Начало перерыва
-    if data["minutes_total"]==25:
-        start_break(cid,5)
-    elif data["minutes_total"]==50:
-        start_break(cid,10)
-    else:
-        kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        kb.add("🍅 Новый фокус","⬅️ Главное меню")
-        bot.send_message(cid,"Фокус завершён! Что дальше?",reply_markup=kb)
-
-# Старт перерыва
-def start_break(cid,minutes):
-    user(cid)["focus_state"]="break"
-    save_data()
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("⏭ Пропустить перерыв","🍅 Новый фокус")
-    kb.add("⬅️ Главное меню")
-    bot.send_message(cid,f"Перерыв {minutes} минут",reply_markup=kb)
-    pomodoro_timers[cid] = {"minutes_total":minutes,"minutes_left":minutes,"notify_points":[],"type":"break"}
-    threading.Thread(target=run_timer,args=[cid],daemon=True).start()
-
-# Завершение перерыва автоматически
-def finish_break(cid):
-    pomodoro_timers.pop(cid,None)
-    user(cid)["focus_state"]=None
-    save_data()
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb=types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("🍅 Новый фокус","⬅️ Главное меню")
-    bot.send_message(cid,"Перерыв завершён! Можно начать новый фокус.",reply_markup=kb)
+    bot.send_message(cid,"Фокус завершён! Что дальше?",reply_markup=kb)
 
-# Пропуск перерыва
-@bot.message_handler(func=lambda m: m.text=="⏭ Пропустить перерыв")
-def skip_break(message):
-    cid = str(message.chat.id)
-    pomodoro_timers.pop(cid,None)
-    user(cid)["focus_state"]=None
-    save_data()
-    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🍅 Новый фокус","⬅️ Главное меню")
-    bot.send_message(cid,"Перерыв пропущен! Можно начать новый фокус.",reply_markup=kb)
-
-# Новый фокус
 @bot.message_handler(func=lambda m: m.text=="🍅 Новый фокус")
 def new_focus(message):
     focus_menu(message)
 
-
-# ---------------- СТАТИСТИКА ----------------
-
+# ----------------- STATS -----------------
 @bot.message_handler(func=lambda m: m.text=="📊 Статистика")
 def stats(message):
-    cid = str(message.chat.id)
-    u = user(cid)
-    mood_stats = {}
-    for m in u["moods"].values(): mood_stats[m]=mood_stats.get(m,0)+1
-    text = f"📊 Статистика\n\n🍅 Фокус-сессий: {u['focus']['sessions']}\n⏱ Минут фокуса: {u['focus']['minutes']}\n\n😊 Настроение:\n"
-    for k,v in mood_stats.items(): text+=f"{k} — {v}\n"
+    cid=str(message.chat.id)
+    u=user(cid)
+    u["state"]=None
+    u["focus_state"]=None
+    save_data()
+    mood_stats={}
+    for m in u["moods"].values():
+        mood_stats[m]=mood_stats.get(m,0)+1
+    text=(f"📊 Статистика\n\n"
+          f"🍅 Фокус-сессий: {u['focus']['sessions']}\n"
+          f"⏱ Минут фокуса: {u['focus']['minutes']}\n\n"
+          "😊 Настроение:\n")
+    for k,v in mood_stats.items():
+        text+=f"{k} — {v}\n"
     bot.send_message(cid,text,reply_markup=main_menu())
 
 # ---------------- RUN ----------------
