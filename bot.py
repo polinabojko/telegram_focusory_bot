@@ -263,7 +263,7 @@ def view_tasks_menu(m):
             [T[l]["back"]]
         )
     )
-    @bot.message_handler(func=lambda m: get_state(cid(m)) == "view_tasks")
+@bot.message_handler(func=lambda m: get_state(cid(m)) == "view_tasks")
 def show_tasks(m):
     c = cid(m)
     l = lang(c)
