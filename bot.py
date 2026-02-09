@@ -562,19 +562,46 @@ def stop_focus(message):
 
 # ---------------- Завершение фокуса ----------------
 def finish_focus(cid):
+    data = pomodoro_timers.get(cid)
+    if not data:
+        return
+
+    minutes_done = data.get("minutes_total", 0)
+
     stats = get_user_stats(cid)
     stats["sessions"] += 1
-    stats["minutes"] += pomodoro_timers.get(cid, {}).get("minutes_total", 0)
+    stats["minutes"] += minutes_done
     save_data()
 
-    user(cid)["focus_state"] = None
+    # удаляем таймер и сбрасываем состояние
     pomodoro_timers.pop(cid, None)
+    user(cid)["focus_state"] = None
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("🍅 Новый фокус")
     kb.add("⬅️ Главное меню")
 
     bot.send_message(int(cid), "Фокус завершён! Что дальше?", reply_markup=kb)
+
+def start_break(cid, minutes=5):
+    user(cid)["focus_state"] = "break"
+    save_data()
+
+    kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    kb.add("⏭ Пропустить перерыв", "🍅 Новый фокус")
+    kb.add("⬅️ Главное меню")
+
+    bot.send_message(cid, f"Перерыв {minutes} минут", reply_markup=kb)
+
+    # Таймер перерыва
+    t = threading.Timer(minutes*60, finish_break, args=[cid])
+    pomodoro_timers[cid] = {"thread": t}
+    t.start()
+
+def finish_break(cid):
+    pomodoro_timers.pop(cid, None)
+    user(cid)["focus_state"] = None
+    bot.send_message(cid, "Перерыв завершён! Можно начать новый фокус.", reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("🍅 Новый фокус","⬅️ Главное меню"))
 
 # ---------------- Новый фокус ----------------
 @bot.message_handler(func=lambda m: m.text == "🍅 Новый фокус")
