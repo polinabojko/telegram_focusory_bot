@@ -244,8 +244,14 @@ def delete_note(message):
         reply_markup=main_menu()
     )
 
-# ----------- ПЛАН -----------
+# ----------- ПЛАН --------------
 
+import threading
+import time
+from datetime import datetime, date, timedelta
+from telebot import types
+
+# функция для завершения повторяющейся задачи
 def complete_task(task):
     task["done"] = True
 
@@ -259,32 +265,41 @@ def complete_task(task):
     elif task["repeat"] == "weekly":
         d += timedelta(weeks=1)
     elif task["repeat"] == "monthly":
-        d = d.replace(
-            month=d.month + 1 if d.month < 12 else 1,
-            year=d.year + 1 if d.month == 12 else d.year
-        )
+        if d.month == 12:
+            d = d.replace(year=d.year+1, month=1)
+        else:
+            d = d.replace(month=d.month+1)
 
     task["date"] = d.isoformat()
     task["done"] = False
     task["remind_at"] = None
 
+# ---------- Фоновый цикл напоминаний ----------
+def reminder_loop():
+    while True:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        for cid, udata in all_users().items():  # функция возвращает всех пользователей
+            for task in udata["tasks"]:
+                if task.get("remind_at") == now:
+                    bot.send_message(int(cid), f"⏰ Напоминание о задаче: {task['title']}")
+                    task["remind_at"] = None  # чтобы не повторялось
+                    save_data()
+        time.sleep(60)
 
+threading.Thread(target=reminder_loop, daemon=True).start()
+
+# ---------- Открытие меню планирования ----------
 @bot.message_handler(func=lambda m: m.text == "📅 План")
 def open_plan(message):
-    bot.send_message(
-        message.chat.id,
-        "Планирование задач:",
-        reply_markup=plan_menu()
-    )
+    bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
 
-
+# ---------- Добавление задачи ----------
 @bot.message_handler(func=lambda m: m.text == "➕ Добавить задачу")
 def task_add_start(message):
     cid = str(message.chat.id)
     user(cid)["state"] = "task_title"
     save_data()
     bot.send_message(message.chat.id, "Введите название задачи:")
-
 
 @bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_title")
 def task_title(message):
@@ -297,9 +312,7 @@ def task_title(message):
     kb.add("Сегодня", "На этой неделе")
     kb.add("В этом месяце", "Без даты")
     kb.add("⬅️ Назад")
-
     bot.send_message(message.chat.id, "Когда выполнить задачу?", reply_markup=kb)
-
 
 @bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_date")
 def task_date(message):
@@ -307,32 +320,29 @@ def task_date(message):
     today = date.today()
 
     if message.text == "Сегодня":
-        task_date = today.isoformat()
+        task_date_val = today.isoformat()
     elif message.text == "На этой неделе":
-        task_date = (today + timedelta(days=7)).isoformat()
+        task_date_val = (today + timedelta(days=7)).isoformat()
     elif message.text == "В этом месяце":
-        task_date = today.replace(day=28).isoformat()
+        task_date_val = today.replace(day=28).isoformat()
     elif message.text == "Без даты":
-        task_date = None
+        task_date_val = None
     else:
         bot.send_message(message.chat.id, "Выберите вариант кнопкой.")
         return
 
-    user(cid)["tmp_task_date"] = task_date
+    user(cid)["tmp_task_date"] = task_date_val
     user(cid)["state"] = "task_repeat"
     save_data()
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("Каждый день", "Каждую неделю")
     kb.add("Каждый месяц", "Без повтора")
-
     bot.send_message(message.chat.id, "Повторять задачу?", reply_markup=kb)
-
 
 @bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_repeat")
 def task_repeat(message):
     cid = str(message.chat.id)
-
     repeat_map = {
         "Каждый день": "daily",
         "Каждую неделю": "weekly",
@@ -348,17 +358,13 @@ def task_repeat(message):
     user(cid)["state"] = "task_reminder"
     save_data()
 
-    bot.send_message(
-        message.chat.id,
-        "Если нужно напоминание, введи дату и время\nФормат: YYYY-MM-DD HH:MM\nили напиши «без напоминания»",
-        reply_markup=types.ReplyKeyboardRemove()
-    )
-
+    bot.send_message(message.chat.id,
+                     "Если нужно напоминание, введи дату и время\nФормат: YYYY-MM-DD HH:MM\nили напиши «без напоминания»",
+                     reply_markup=types.ReplyKeyboardRemove())
 
 @bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_reminder")
 def task_reminder(message):
     cid = str(message.chat.id)
-
     remind_at = None
     if message.text.lower() != "без напоминания":
         try:
@@ -380,33 +386,16 @@ def task_reminder(message):
 
     user(cid)["state"] = None
     save_data()
+    bot.send_message(message.chat.id, "Задача добавлена.", reply_markup=plan_menu())
 
-    bot.send_message(
-        message.chat.id,
-        "Задача добавлена.",
-        reply_markup=plan_menu()
-    )
-
-def reminder_loop():
-    while True:
-        now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        for cid, udata in all_users().items():  # функция возвращает всех пользователей
-            for task in udata["tasks"]:
-                if task.get("remind_at") == now:
-                    bot.send_message(int(cid), f"⏰ Напоминание о задаче: {task['title']}")
-                    task["remind_at"] = None  # чтобы не повторялось
-                    save_data()
-        time.sleep(60)
-threading.Thread(target=reminder_loop, daemon=True).start()
+# ---------- Фильтр задач ----------
 def filter_tasks(cid, mode):
     today = date.today()
     tasks = user(cid)["tasks"]
     result = []
-
     for t in tasks:
         if t["done"]:
             continue
-
         if mode == "today" and t["date"] == today.isoformat():
             result.append(t)
         elif mode == "week" and t["date"]:
@@ -417,23 +406,14 @@ def filter_tasks(cid, mode):
             result.append(t)
         elif mode == "nodate" and t["date"] is None:
             result.append(t)
-
     return result
 
-
+# ---------- Показ задач ----------
 @bot.message_handler(func=lambda m: m.text in ["📅 Сегодня", "🗓 Неделя", "🗂 Месяц", "📌 Без даты"])
 def show_tasks(message):
     cid = str(message.chat.id)
-
-    mapping = {
-        "📅 Сегодня": "today",
-        "🗓 Неделя": "week",
-        "🗂 Месяц": "month",
-        "📌 Без даты": "nodate"
-    }
-
+    mapping = {"📅 Сегодня": "today", "🗓 Неделя": "week", "🗂 Месяц": "month", "📌 Без даты": "nodate"}
     tasks = filter_tasks(cid, mapping[message.text])
-
     if not tasks:
         bot.send_message(message.chat.id, "Нет задач.", reply_markup=plan_menu())
         return
@@ -446,50 +426,55 @@ def show_tasks(message):
     user(cid)["last_task_list"] = tasks
     save_data()
 
-    bot.send_message(
-        message.chat.id,
-        text + "\nВведите номер выполненной задачи:",
-        reply_markup=back_menu()
-    )
+    bot.send_message(message.chat.id, text + "\nВведите номер выполненной задачи:", reply_markup=back_menu())
 
-
-@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action" and m.text == "✅ Выполнено")
-def task_mark_done(message):
+# ---------- Отметка задачи выполненной ----------
+@bot.message_handler(func=lambda m: True)
+def task_done_select_handler(message):
     cid = str(message.chat.id)
-    tid = user(cid).get("selected_task_id")
+    u = user(cid)
+    if u.get("state") != "task_done_select":
+        return
 
-    for t in user(cid)["tasks"]:
-        if t["id"] == tid:
+    try:
+        idx = int(message.text) - 1
+        task = u["last_task_list"][idx]
+    except:
+        bot.send_message(message.chat.id, "Введите корректный номер задачи.")
+        return
+
+    for t in u["tasks"]:
+        if t["id"] == task["id"]:
             complete_task(t)
 
-    user(cid)["state"] = None
-    user(cid).pop("selected_task_id", None)
+    u["state"] = None
+    u.pop("last_task_list", None)
     save_data()
+    bot.send_message(message.chat.id, f"Задача '{task['title']}' выполнена.", reply_markup=plan_menu())
 
-    bot.send_message(message.chat.id, "Задача выполнена.", reply_markup=plan_menu())
-@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action" and m.text == "🔕 Отключить напоминание")
-def task_disable_reminder(message):
+# ---------- Действия с задачей ----------
+@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action")
+def task_action(message):
     cid = str(message.chat.id)
     tid = user(cid).get("selected_task_id")
+    if not tid:
+        return
+    t = next((x for x in user(cid)["tasks"] if x["id"] == tid), None)
+    if not t:
+        return
 
-    for t in user(cid)["tasks"]:
-        if t["id"] == tid:
-            t["remind_at"] = None
+    if message.text == "✅ Выполнено":
+        complete_task(t)
+        bot.send_message(message.chat.id, "Задача выполнена.", reply_markup=plan_menu())
+    elif message.text == "🔕 Отключить напоминание":
+        t["remind_at"] = None
+        bot.send_message(message.chat.id, "Напоминание отключено.", reply_markup=plan_menu())
+    elif message.text == "⬅️ Назад":
+        bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
 
     user(cid)["state"] = None
     user(cid).pop("selected_task_id", None)
     save_data()
-
-    bot.send_message(message.chat.id, "Напоминание отключено.", reply_markup=plan_menu())
-
-@bot.message_handler(func=lambda m: user(m.chat.id).get("state") == "task_action" and m.text == "⬅️ Назад")
-def task_action_back(message):
-    cid = str(message.chat.id)
-    user(cid)["state"] = None
-    user(cid).pop("selected_task_id", None)
-    save_data()
-
-    bot.send_message(message.chat.id, "Планирование задач:", reply_markup=plan_menu())
     
 
 # ----------------- POMODORO ——————————————
