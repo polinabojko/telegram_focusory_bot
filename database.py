@@ -17,14 +17,15 @@ def init_db():
     """)
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        title TEXT,
-        done INTEGER DEFAULT 0,
-        created_at TEXT
-    )
-    """)
+CREATE TABLE IF NOT EXISTS tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    title TEXT,
+    due_date TEXT,
+    done INTEGER DEFAULT 0,
+    created_at TEXT
+)
+""")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS tasks_archive (
