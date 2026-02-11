@@ -12,6 +12,9 @@ from notes import *
 from stats import generate_focus_graph
 from levels import get_level_data, add_xp
 from database import cursor, conn
+from achievements import unlock
+from habit_graphs import generate_bar_chart, generate_heatmap
+import os
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -230,7 +233,19 @@ def back_main(call):
         reply_markup=main_menu()
     )
 
+@bot.callback_query_handler(func=lambda call: call.data == "habit_graph")
+def send_graph(call):
+    file = generate_bar_chart(call.from_user.id)
+    bot.send_photo(call.from_user.id, open(file, "rb"))
+    os.remove(file)
 
+
+@bot.callback_query_handler(func=lambda call: call.data == "habit_heatmap")
+def send_heatmap(call):
+    file = generate_heatmap(call.from_user.id)
+    bot.send_photo(call.from_user.id, open(file, "rb"))
+    os.remove(file)
+    
 # ================== ЕЖЕДНЕВНАЯ РАССЫЛКА ==================
 
 def daily_morning():
