@@ -10,6 +10,7 @@ def create_habit(user_id, title):
         VALUES (?, ?)
     """, (user_id, title))
     conn.commit()
+    unlock(user_id, "first_habit", bot)
 
 
 def get_active_habits(user_id):
