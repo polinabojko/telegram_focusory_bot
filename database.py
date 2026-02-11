@@ -15,17 +15,33 @@ def init_db():
         level INTEGER DEFAULT 1
     )
     """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS habit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        habit_id INTEGER,
+        date TEXT
+   )
+   """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        code TEXT,
+        unlocked_at TEXT
+   )
+   """)
 
     cursor.execute("""
-CREATE TABLE IF NOT EXISTS tasks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    title TEXT,
-    due_date TEXT,
-    done INTEGER DEFAULT 0,
-    created_at TEXT
-)
-""")
+    CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        title TEXT,
+        due_date TEXT,
+        done INTEGER DEFAULT 0,
+        created_at TEXT
+   )
+   """)
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS tasks_archive (
