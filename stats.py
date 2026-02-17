@@ -1,88 +1,7 @@
-from telebot import types
 from database import cursor
-from datetime import datetime, timedelta
-
-def show(bot, user_id):
-    week_ago = datetime.now() - timedelta(days=7)
-
-    completed = cursor.execute("""
-        SELECT COUNT(*) FROM tasks
-        WHERE user_id=? AND completed=1
-        AND created_at >= ?
-    """, (user_id, week_ago)).fetchone()[0]
-
-    bot.send_message(
-        user_id,
-        f"Статистика за 7 дней.\n\nВыполнено задач: {completed}"
-    )
-
-def mood_menu(bot, user_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("😃", "🙂", "😐", "😔", "😡")
-    markup.add("🔙 Назад")
-    bot.send_message(user_id, "Оцените день.", reply_markup=markup)
-
-from database import cursor
-
-
-def habit_statistics(user_id):
-    cursor.execute("""
-        SELECT COUNT(*) FROM habit_logs
-        WHERE user_id = %s
-    """, (user_id,))
-    total_marks = cursor.fetchone()[0]
-
-    cursor.execute("""
-        SELECT MAX(streak) FROM habits
-        WHERE user_id = %s
-    """, (user_id,))
-    best_streak = cursor.fetchone()[0] or 0
-
-    return total_marks, best_streak
-
-total, best = habit_statistics(message.chat.id)
-
-text += f"\n\n🔥 Всего отметок: {total}"
-text += f"\n🏆 Лучший стрик: {best}"
-
 from stats_graph import generate_month_graph
-
-
-def send_stats(bot, message):
-    check_streak_reset(user_id)
-    user_id = message.chat.id
-
-    # общее количество отметок
-    cursor.execute("""
-        SELECT COUNT(*) FROM habit_logs
-        WHERE user_id = %s
-    """, (user_id,))
-    total_marks = cursor.fetchone()[0]
-
-    # лучший стрик
-    cursor.execute("""
-        SELECT MAX(streak) FROM habits
-        WHERE user_id = %s
-    """, (user_id,))
-    best_streak = cursor.fetchone()[0] or 0
-
-    text = f"""
-📊 Статистика
-
-🔥 Всего отметок: {total_marks}
-🏆 Лучший стрик: {best_streak}
-"""
-
-    bot.send_message(user_id, text)
-
-    # график
-    filename = generate_month_graph(user_id)
-    with open(filename, "rb") as photo:
-        bot.send_photo(user_id, photo)
-
-    os.remove(filename)
-
 from datetime import date, timedelta
+import os
 
 
 def check_streak_reset(user_id):
@@ -102,3 +21,131 @@ def check_streak_reset(user_id):
                 SET streak = 0
                 WHERE id = %s
             """, (habit_id,))
+
+
+def send_stats(bot, message):
+    user_id = message.chat.id
+
+    # --- СБРОС СТРИКОВ ---
+    check_streak_reset(user_id)
+
+    # =====================
+    #        ЗАДАЧИ
+    # =====================
+
+    # всего задач
+    cursor.execute("""
+        SELECT COUNT(*) FROM tasks
+        WHERE user_id = %s
+    """, (user_id,))
+    total_tasks = cursor.fetchone()[0]
+
+    # выполнено задач
+    cursor.execute("""
+        SELECT COUNT(*) FROM tasks
+        WHERE user_id = %s AND completed = TRUE
+    """, (user_id,))
+    completed_tasks = cursor.fetchone()[0]
+
+    # задачи за месяц
+    cursor.execute("""
+        SELECT COUNT(*) FROM tasks
+        WHERE user_id = %s
+        AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+    """, (user_id,))
+    month_tasks = cursor.fetchone()[0]
+
+    # выполнено за месяц
+    cursor.execute("""
+        SELECT COUNT(*) FROM tasks
+        WHERE user_id = %s
+        AND completed = TRUE
+        AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+    """, (user_id,))
+    month_completed = cursor.fetchone()[0]
+
+    # =====================
+    #       ПРИВЫЧКИ
+    # =====================
+
+    # всего отметок
+    cursor.execute("""
+        SELECT COUNT(*) FROM habit_logs
+        WHERE user_id = %s
+    """, (user_id,))
+    total_marks = cursor.fetchone()[0]
+
+    # лучший стрик
+    cursor.execute("""
+        SELECT MAX(streak) FROM habits
+        WHERE user_id = %s
+    """, (user_id,))
+    best_streak = cursor.fetchone()[0] or 0
+
+    # отметки за месяц
+    cursor.execute("""
+        SELECT COUNT(*) FROM habit_logs
+        WHERE user_id = %s
+        AND marked_date >= CURRENT_DATE - INTERVAL '30 days'
+    """, (user_id,))
+    month_marks = cursor.fetchone()[0]
+
+    # =====================
+    #       НАСТРОЕНИЕ
+    # =====================
+
+    cursor.execute("""
+        SELECT mood FROM mood
+        WHERE user_id = %s
+        AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+    """, (user_id,))
+
+    moods = [row[0] for row in cursor.fetchall()]
+
+    mood_map = {
+        "😃": 5,
+        "🙂": 4,
+        "😐": 3,
+        "😔": 2,
+        "😡": 1
+    }
+
+    if moods:
+        avg = sum(mood_map.get(m, 3) for m in moods) / len(moods)
+        avg_mood_value = round(avg)
+
+        reverse_map = {v: k for k, v in mood_map.items()}
+        avg_mood = reverse_map.get(avg_mood_value, "—")
+    else:
+        avg_mood = "—"
+
+    # =====================
+    #        ВЫВОД
+    # =====================
+
+    text = f"""
+📊 Статистика
+
+📝 Задачи:
+Всего: {total_tasks}
+Выполнено: {completed_tasks}
+За 30 дней: {month_tasks}
+Выполнено за 30 дней: {month_completed}
+
+🔁 Привычки:
+Всего отметок: {total_marks}
+За 30 дней: {month_marks}
+Лучший стрик: {best_streak}
+
+😊 Настроение:
+Среднее за 30 дней: {avg_mood}
+"""
+
+    bot.send_message(user_id, text)
+
+    # --- ГРАФИК ---
+    filename = generate_month_graph(user_id)
+    with open(filename, "rb") as photo:
+        bot.send_photo(user_id, photo)
+
+    os.remove(filename)
