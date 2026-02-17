@@ -1,7 +1,6 @@
 import os
 import telebot
 import sqlite3
-import redis
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -11,10 +10,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
-REDIS_URL = os.getenv("REDIS_URL")
 
 bot = telebot.TeleBot(TOKEN)
-r = redis.from_url(REDIS_URL)
 
 # ================= DATABASE =================
 
