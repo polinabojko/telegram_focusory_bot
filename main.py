@@ -3,6 +3,7 @@ from config import TOKEN
 from database import init_db
 import keyboards
 import tasks
+import habits
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -51,5 +52,23 @@ def callback_router(call):
     elif data.startswith("edit_"):
         task_id = int(data.split("_")[1])
         tasks.edit_task(bot, call, task_id)
+        
+    elif data == "habits":
+        habits.habits_menu(bot, call.message)
+
+    elif data == "add_habit":
+        habits.ask_habit_text(bot, call)
+
+    elif data == "list_habits":
+        habits.list_habits(bot, call.message)
+
+    elif data.startswith("mark_"):
+        habit_id = int(data.split("_")[1])
+        habits.mark_habit(bot, call, habit_id)
+
+    elif data.startswith("delete_habit_"):
+        habit_id = int(data.split("_")[2])
+        cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
+        habits.list_habits(bot, call.message)
 
 bot.polling()
