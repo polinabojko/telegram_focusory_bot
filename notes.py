@@ -41,9 +41,8 @@ def save_note(bot, message, title):
     # Возвращаем в меню заметок
     menu(bot, message)
 
-# ---------- СПИСОК ЗАМЕТОК ----------
-def list_notes(bot, message):
-    user_id = message.chat.id
+def list_notes(bot, call):
+    user_id = call.message.chat.id
     cursor.execute(
         "SELECT id, title FROM notes WHERE user_id = %s ORDER BY created_at DESC",
         (user_id,)
@@ -51,7 +50,7 @@ def list_notes(bot, message):
     notes_list = cursor.fetchall()
 
     if not notes_list:
-        bot.send_message(user_id, "Пока нет заметок.")
+        bot.edit_message_text("Пока нет заметок.", user_id, call.message.message_id)
         return
 
     markup = types.InlineKeyboardMarkup()
@@ -59,7 +58,7 @@ def list_notes(bot, message):
         markup.add(types.InlineKeyboardButton(n[1], callback_data=f"note_{n[0]}"))
     markup.add(types.InlineKeyboardButton("⬅ Главное меню", callback_data="main"))
 
-    bot.send_message(user_id, "Выберите заметку:", reply_markup=markup)
+    bot.edit_message_text("Выберите заметку:", user_id, call.message.message_id, reply_markup=markup)
 
 # ---------- ДЕЙСТВИЯ С ЗАМЕТКОЙ ----------
 def note_actions(bot, call, note_id):
