@@ -1,9 +1,13 @@
 import psycopg2
 from config import DATABASE_URL
 
-conn = psycopg2.connect(DATABASE_URL, sslmode="require")
-conn.autocommit = True
-cursor = conn.cursor()
+try:
+    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+    conn.autocommit = True
+    cursor = conn.cursor()
+except Exception as e:
+    print("Ошибка подключения к БД:", e)
+    raise
 
 def init_db():
     # Tasks
