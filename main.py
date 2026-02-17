@@ -11,6 +11,12 @@ import focus
 bot = telebot.TeleBot(TOKEN)
 
 init_db()
+import threading
+import focus
+
+watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,))
+watcher_thread.daemon = True
+watcher_thread.start()
 
 @bot.message_handler(commands=["start"])
 def start(message):
