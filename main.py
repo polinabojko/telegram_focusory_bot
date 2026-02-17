@@ -130,6 +130,6 @@ def callback_router(call):
     elif data.startswith("view_note_") or data.startswith("edit_note_") or data.startswith("delete_note_"):
         notes.handle_note_callback(bot, call)
     elif data == "mood":
-        mood.menu(bot, call.message.chat.id)
+        mood.mood_menu(bot, call.message)
 
 bot.polling()
