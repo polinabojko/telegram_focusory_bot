@@ -53,3 +53,20 @@ def init_db():
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_tasks_user_id
+    ON tasks(user_id);
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_habits_user_id
+    ON habits(user_id);
+    """)
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_habit_logs_user_id
+    ON habit_logs(user_id);
+    """)
+
+cursor.execute("""
+CREATE INDEX IF NOT EXISTS idx_habit_logs_date
+ON habit_logs(marked_date);
+""")
