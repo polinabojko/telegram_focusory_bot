@@ -44,3 +44,39 @@ total, best = habit_statistics(message.chat.id)
 
 text += f"\n\n🔥 Всего отметок: {total}"
 text += f"\n🏆 Лучший стрик: {best}"
+
+from stats_graph import generate_month_graph
+
+
+def send_stats(bot, message):
+    user_id = message.chat.id
+
+    # общее количество отметок
+    cursor.execute("""
+        SELECT COUNT(*) FROM habit_logs
+        WHERE user_id = %s
+    """, (user_id,))
+    total_marks = cursor.fetchone()[0]
+
+    # лучший стрик
+    cursor.execute("""
+        SELECT MAX(streak) FROM habits
+        WHERE user_id = %s
+    """, (user_id,))
+    best_streak = cursor.fetchone()[0] or 0
+
+    text = f"""
+📊 Статистика
+
+🔥 Всего отметок: {total_marks}
+🏆 Лучший стрик: {best_streak}
+"""
+
+    bot.send_message(user_id, text)
+
+    # график
+    filename = generate_month_graph(user_id)
+    with open(filename, "rb") as photo:
+        bot.send_photo(user_id, photo)
+
+    os.remove(filename)
