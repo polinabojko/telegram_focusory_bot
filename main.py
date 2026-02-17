@@ -118,7 +118,7 @@ def callback_router(call):
 
     elif data == "list_notes":
         import notes
-        notes.list_notes(bot, call.message)
+        notes.list_notes(bot, call)
 
     elif data.startswith("note_"):
         note_id = int(data.split("_")[1])
