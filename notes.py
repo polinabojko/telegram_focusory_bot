@@ -3,9 +3,12 @@ from database import cursor, conn
 
 # ---------- МЕНЮ ----------
 def menu(bot, user_id):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("➕ Добавить заметку", "📋 Список заметок")
-    markup.add("🏠 Главное меню")
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("➕ Добавить заметку", callback_data="add_note"),
+        types.InlineKeyboardButton("📋 Список заметок", callback_data="list_notes")
+    )
+    markup.add(types.InlineKeyboardButton("⬅ Главное меню", callback_data="main"))
     bot.send_message(user_id, "🗒 Заметки", reply_markup=markup)
 
 # ---------- ДОБАВЛЕНИЕ ----------
@@ -29,7 +32,8 @@ def save_note(message, title):
     )
     conn.commit()
     message.bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
-    add_main_menu_reply(message.bot, user_id, "Вы можете вернуться в главное меню:")
+    # Сразу возвращаем в меню заметок
+    menu(message.bot, user_id)
 
 # ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, message):
@@ -47,6 +51,7 @@ def list_notes(bot, message):
     markup = types.InlineKeyboardMarkup()
     for n in notes_list:
         markup.add(types.InlineKeyboardButton(n[1], callback_data=f"note_{n[0]}"))
+    markup.add(types.InlineKeyboardButton("⬅ Главное меню", callback_data="main"))
 
     bot.send_message(user_id, "Выберите заметку:", reply_markup=markup)
 
@@ -66,7 +71,7 @@ def note_actions(bot, call, note_id):
         types.InlineKeyboardButton("✏ Редактировать", callback_data=f"edit_note_{note_id}"),
         types.InlineKeyboardButton("🗑 Удалить", callback_data=f"delete_note_{note_id}")
     )
-    markup.add(types.InlineKeyboardButton("⬅ Назад", callback_data="list_notes"))
+    markup.add(types.InlineKeyboardButton("⬅ Список заметок", callback_data="list_notes"))
 
     bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup)
 
@@ -87,10 +92,5 @@ def save_edited_note(message, note_id):
     cursor.execute("UPDATE notes SET content = %s WHERE id = %s", (new_content, note_id))
     conn.commit()
     message.bot.send_message(message.chat.id, "Заметка обновлена ✅")
-    add_main_menu_reply(message.bot, message.chat.id)
-
-# ---------- ВСПОМОГАТЕЛЬНОЕ ----------
-def add_main_menu_reply(bot, user_id, text=""):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("🏠 Главное меню")
-    bot.send_message(user_id, text, reply_markup=markup)
+    # Сразу возвращаем в меню заметок
+    menu(message.bot, message.chat.id)
