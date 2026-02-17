@@ -1,9 +1,8 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 import threading
 from datetime import datetime, timedelta
-
-timers = {}
-sessions = {}  # хранит состояние пользователя
+import time
+from database import cursor
 
 
 def focus_menu(bot, message):
@@ -12,15 +11,8 @@ def focus_menu(bot, message):
         InlineKeyboardButton("🍅 Режим 25/5", callback_data="pomodoro_start")
     )
     markup.add(
-    InlineKeyboardButton("⏳ Осталось времени", callback_data="focus_time")
-    )
-    markup.add(
-        InlineKeyboardButton("⛔ Остановить", callback_data="focus_stop")
-    )
-    markup.add(
         InlineKeyboardButton("⬅ Назад", callback_data="main")
     )
-    
 
     bot.edit_message_text(
         "🎯 Pomodoro режим\n25 минут фокус → 5 минут перерыв",
@@ -28,13 +20,20 @@ def focus_menu(bot, message):
         message.message_id,
         reply_markup=markup
     )
-
+    
+def active_focus_keyboard():
+    markup = InlineKeyboardMarkup()
+    markup.add(
+        InlineKeyboardButton("⏳ Осталось времени", callback_data="focus_time")
+    )
+    markup.add(
+        InlineKeyboardButton("⛔ Остановить", callback_data="focus_stop")
+    )
+    return markup
 
 # ---------- ЗАПУСК ----------
 
 def start_pomodoro(bot, user_id):
-    from datetime import datetime, timedelta
-
     # деактивируем старые сессии
     cursor.execute("""
         UPDATE focus_sessions
@@ -44,13 +43,16 @@ def start_pomodoro(bot, user_id):
 
     end_time = datetime.now() + timedelta(minutes=25)
 
+    msg = bot.send_message(
+        user_id,
+        "🍅 Фокус начат на 25 минут.",
+        reply_markup=active_focus_keyboard()
+    )
+
     cursor.execute("""
-        INSERT INTO focus_sessions (user_id, mode, cycle, ends_at)
-        VALUES (%s, 'focus', 1, %s)
-    """, (user_id, end_time))
-
-    bot.send_message(user_id, "🍅 Фокус начат на 25 минут.")
-
+        INSERT INTO focus_sessions (user_id, mode, cycle, ends_at, active, message_id)
+        VALUES (%s, 'focus', 1, %s, TRUE, %s)
+    """, (user_id, end_time, msg.message_id))
 
 def start_focus_timer(bot, user_id, minutes):
     def switch_to_break():
@@ -89,64 +91,96 @@ def start_break_timer(bot, user_id, minutes):
 # ---------- ОСТАНОВКА ----------
 
 def stop_focus(bot, user_id):
-    if user_id in timers:
-        timers[user_id].cancel()
-        timers.pop(user_id, None)
+    cursor.execute("""
+        UPDATE focus_sessions
+        SET active = FALSE
+        WHERE user_id = %s
+        AND active = TRUE
+    """, (user_id,))
 
-    if user_id in sessions:
-        sessions.pop(user_id, None)
-        bot.send_message(user_id, "⛔ Pomodoro остановлен.")
-
-import threading
-import time
-from datetime import datetime, timedelta
-from database import cursor
+    bot.send_message(user_id, "⛔ Pomodoro остановлен.")
 
 
+def active_focus_keyboard():
+    markup = InlineKeyboardMarkup()
+    markup.add(
+        InlineKeyboardButton("⏳ Осталось времени", callback_data="focus_time")
+    )
+    markup.add(
+        InlineKeyboardButton("⛔ Остановить", callback_data="focus_stop")
+    )
+    return markup
 def focus_watcher(bot):
     while True:
         cursor.execute("""
-            SELECT id, user_id, mode, cycle
+            SELECT id, user_id, mode, cycle, ends_at, message_id
             FROM focus_sessions
             WHERE active = TRUE
-            AND ends_at <= NOW()
         """)
 
         sessions = cursor.fetchall()
 
-        for session_id, user_id, mode, cycle in sessions:
+        for session_id, user_id, mode, cycle, ends_at, message_id in sessions:
 
-            if mode == "focus":
-                # переключаем на перерыв
-                new_end = datetime.now() + timedelta(minutes=5)
+            remaining = ends_at - datetime.now()
 
-                cursor.execute("""
-                    UPDATE focus_sessions
-                    SET mode = 'break',
-                        ends_at = %s
-                    WHERE id = %s
-                """, (new_end, session_id))
+            # если время вышло
+            if remaining.total_seconds() <= 0:
 
-                bot.send_message(user_id, "☕ Перерыв 5 минут.")
+                if mode == "focus":
+                    # логируем завершённый фокус
+                    cursor.execute("""
+                        INSERT INTO focus_logs (user_id, cycle)
+                        VALUES (%s, %s)
+                    """, (user_id, cycle))
+
+                    new_end = datetime.now() + timedelta(minutes=5)
+
+                    cursor.execute("""
+                        UPDATE focus_sessions
+                        SET mode = 'break',
+                            ends_at = %s
+                        WHERE id = %s
+                    """, (new_end, session_id))
+
+                    bot.send_message(user_id, "☕ Перерыв 5 минут.")
+
+                else:
+                    new_end = datetime.now() + timedelta(minutes=25)
+
+                    cursor.execute("""
+                        UPDATE focus_sessions
+                        SET mode = 'focus',
+                            cycle = cycle + 1,
+                            ends_at = %s
+                        WHERE id = %s
+                    """, (new_end, session_id))
+
+                    bot.send_message(user_id, f"🍅 Новый фокус (цикл {cycle+1})")
 
             else:
-                # новый цикл фокуса
-                new_end = datetime.now() + timedelta(minutes=25)
+                # автообновление времени
+                minutes = int(remaining.total_seconds() // 60)
+                seconds = int(remaining.total_seconds() % 60)
 
-                cursor.execute("""
-                    UPDATE focus_sessions
-                    SET mode = 'focus',
-                        cycle = cycle + 1,
-                        ends_at = %s
-                    WHERE id = %s
-                """, (new_end, session_id))
+                mode_text = "🍅 Фокус" if mode == "focus" else "☕ Перерыв"
 
-                bot.send_message(user_id, f"🍅 Новый фокус (цикл {cycle+1})")
+                try:
+                    if message_id:
+                        bot.edit_message_text(
+                            f"{mode_text}\n"
+                            f"Цикл: {cycle}\n"
+                            f"Осталось: {minutes:02d}:{seconds:02d}",
+                            user_id,
+                            message_id,
+                            reply_markup=active_focus_keyboard()
+                        )
+                except:
+                    pass
 
-        time.sleep(30)
+        time.sleep(60)
 
 from datetime import datetime
-from database import cursor
 
 
 def show_remaining_time(bot, user_id):
