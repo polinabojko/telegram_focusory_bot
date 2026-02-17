@@ -40,6 +40,7 @@ def save_task_text(message, bot):
     )
     markup.add(
         InlineKeyboardButton("Неделя", callback_data=f"due_week|{title}"),
+        InlineKeyboardButton("Месяц", callback_data=f"due_month|{title}"),
         InlineKeyboardButton("Без срока", callback_data=f"due_none|{title}")
     )
 
@@ -54,6 +55,8 @@ def save_task(user_id, title, due_type):
         due = today + timedelta(days=1)
     elif due_type == "week":
         due = today + timedelta(days=7)
+    elif due_type == "month":
+        due = today + timedelta(days=30)
     else:
         due = None
 
