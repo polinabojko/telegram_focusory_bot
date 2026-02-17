@@ -1,6 +1,7 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import cursor
+from database import cursor, conn
 from datetime import date, timedelta
+from functools import partial
 
 # ---------- МЕНЮ ----------
 
@@ -17,21 +18,19 @@ def habits_menu(bot, message):
         reply_markup=markup
     )
 
-
 # ---------- ДОБАВЛЕНИЕ ----------
 
 def ask_habit_text(bot, call):
     msg = bot.send_message(call.message.chat.id, "Введите название привычки:")
-    bot.register_next_step_handler(msg, save_habit, bot)
-
+    bot.register_next_step_handler(msg, partial(save_habit, bot=bot))
 
 def save_habit(message, bot):
     cursor.execute(
         "INSERT INTO habits (user_id, title) VALUES (%s, %s)",
         (message.chat.id, message.text)
     )
+    conn.commit()
     bot.send_message(message.chat.id, "Добавлено 🔥")
-
 
 # ---------- СПИСОК ----------
 
@@ -56,7 +55,8 @@ def list_habits(bot, message):
     markup = InlineKeyboardMarkup()
 
     for h in habits:
-        text += f"🔥 {h[1]} — {h[2]} дней\n"
+        streak_text = h[2] or 0
+        text += f"🔥 {h[1]} — {streak_text} дней\n"
 
         markup.add(
             InlineKeyboardButton("✅ Отметить", callback_data=f"mark_{h[0]}"),
@@ -72,12 +72,7 @@ def list_habits(bot, message):
         reply_markup=markup
     )
 
-
 # ---------- ЛОГИКА СТРИКА ----------
-
-from database import cursor, conn
-from datetime import date, timedelta
-
 
 def mark_habit(bot, call, habit_id):
     today = date.today()
@@ -117,3 +112,13 @@ def mark_habit(bot, call, habit_id):
     conn.commit()
 
     bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}")
+
+# ---------- УДАЛЕНИЕ ----------
+
+def delete_habit(bot, call, habit_id):
+    cursor.execute(
+        "DELETE FROM habits WHERE id = %s",
+        (habit_id,)
+    )
+    conn.commit()
+    bot.answer_callback_query(call.id, "Привычка удалена 🗑")
