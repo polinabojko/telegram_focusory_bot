@@ -1,12 +1,12 @@
 from datetime import date, timedelta
-from database import cursor, conn
+from database import cursor
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 def habit_activity_graph(bot, call, habit_id):
+    """Показывает график активности привычки за последние 7 дней."""
     today = date.today()
     week_ago = today - timedelta(days=6)
 
-    # Получаем отметки за последние 7 дней
     cursor.execute("""
         SELECT marked_date
         FROM habit_logs
@@ -26,7 +26,6 @@ def habit_activity_graph(bot, call, habit_id):
             symbol = "✅" if day in marked_days else "❌"
             graph += f"{day.strftime('%a %d.%m')} {symbol}\n"
 
-    # Кнопки: Назад к списку привычек + Главное меню
     markup = InlineKeyboardMarkup()
     markup.add(
         InlineKeyboardButton("⬅ Назад", callback_data="list_habits"),
