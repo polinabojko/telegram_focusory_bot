@@ -131,5 +131,13 @@ def callback_router(call):
         notes.handle_note_callback(bot, call)
     elif data == "mood":
         mood.mood_menu(bot, call.message)
+    elif data.startswith("mood_"):
+        mood_choice = data.split("_")[1]
+        cursor.execute(
+            "INSERT INTO mood (user_id, mood) VALUES (%s, %s)",
+            (user_id, mood_choice)
+        )
+        conn.commit()
+        bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice} ✅")
 
 bot.polling()
