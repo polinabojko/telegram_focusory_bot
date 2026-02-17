@@ -5,6 +5,7 @@ from database import cursor
 import keyboards
 import tasks
 import habits
+import habit_graphs
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -71,5 +72,9 @@ def callback_router(call):
         habit_id = int(data.split("_")[2])
         cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
         habits.list_habits(bot, call.message)
-
+        
+    elif data.startswith("graph_"):
+        habit_id = int(data.split("_")[1])
+        habit_graphs.habit_activity_graph(bot, call, habit_id)
+    
 bot.polling()
