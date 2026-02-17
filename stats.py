@@ -21,6 +21,7 @@ def check_streak_reset(user_id):
                 SET streak = 0
                 WHERE id = %s
             """, (habit_id,))
+    conn.commit()  # сохраняем изменения
 
 
 def send_stats(bot, message):
@@ -150,12 +151,12 @@ def send_stats(bot, message):
 
 😊 Настроение:
 Среднее за 30 дней: {avg_mood}
-"""
-    
+   
 🎯 Фокус:
 Всего сессий: {total_focus}
 За 30 дней: {month_focus}
-
+"""
+    
     bot.send_message(user_id, text)
 
     # --- ГРАФИК ---
