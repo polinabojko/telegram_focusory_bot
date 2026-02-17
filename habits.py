@@ -1,10 +1,9 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import cursor, conn
 from datetime import date, timedelta
-from functools import partial
+from telebot import types
 
 # ---------- МЕНЮ ----------
-
 def habits_menu(bot, message):
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("➕ Добавить привычку", callback_data="add_habit"))
@@ -17,15 +16,13 @@ def habits_menu(bot, message):
         message.message_id,
         reply_markup=markup
     )
-    # Добавляем реплай-кнопку "Главное меню" внизу чата
-    from main import add_main_menu_reply
-    add_main_menu_reply(bot, message.chat.id, text="Можно вернуться в главное меню:")
+
 
 # ---------- ДОБАВЛЕНИЕ ----------
-
 def ask_habit_text(bot, call):
     msg = bot.send_message(call.message.chat.id, "Введите название привычки:")
-    bot.register_next_step_handler(msg, partial(save_habit, bot=bot))
+    bot.register_next_step_handler(msg, save_habit, bot)
+
 
 def save_habit(message, bot):
     cursor.execute(
@@ -35,8 +32,11 @@ def save_habit(message, bot):
     conn.commit()
     bot.send_message(message.chat.id, "Добавлено 🔥")
 
-# ---------- СПИСОК ----------
+    # Добавим кнопку «Главное меню»
+    add_main_menu_reply(bot, message.chat.id, "Вы можете вернуться в главное меню:")
 
+
+# ---------- СПИСОК ----------
 def list_habits(bot, message):
     user_id = message.chat.id
 
@@ -44,9 +44,9 @@ def list_habits(bot, message):
         "SELECT id, title, streak, last_marked FROM habits WHERE user_id = %s",
         (user_id,)
     )
-    habits = cursor.fetchall()
+    habits_list = cursor.fetchall()
 
-    if not habits:
+    if not habits_list:
         bot.edit_message_text(
             "Пока нет привычек.",
             message.chat.id,
@@ -57,9 +57,8 @@ def list_habits(bot, message):
     text = "📋 Ваши привычки:\n\n"
     markup = InlineKeyboardMarkup()
 
-    for h in habits:
-        streak_text = h[2] or 0
-        text += f"🔥 {h[1]} — {streak_text} дней\n"
+    for h in habits_list:
+        text += f"🔥 {h[1]} — {h[2]} дней\n"
 
         markup.add(
             InlineKeyboardButton("✅ Отметить", callback_data=f"mark_{h[0]}"),
@@ -75,8 +74,8 @@ def list_habits(bot, message):
         reply_markup=markup
     )
 
-# ---------- ЛОГИКА СТРИКА ----------
 
+# ---------- ЛОГИКА СТРИКА ----------
 def mark_habit(bot, call, habit_id):
     today = date.today()
 
@@ -87,6 +86,7 @@ def mark_habit(bot, call, habit_id):
     habit = cursor.fetchone()
 
     if not habit:
+        bot.answer_callback_query(call.id, "Ошибка! Привычка не найдена ❌")
         return
 
     streak, last_marked, user_id = habit
@@ -95,34 +95,40 @@ def mark_habit(bot, call, habit_id):
         bot.answer_callback_query(call.id, "Сегодня уже отмечено 👀")
         return
 
+    # Если отмечали вчера — продолжаем стрик, иначе начинаем заново
     if last_marked == today - timedelta(days=1):
         streak += 1
     else:
         streak = 1
 
-    # обновляем streak
+    # Обновляем привычку
     cursor.execute(
         "UPDATE habits SET streak = %s, last_marked = %s WHERE id = %s",
         (streak, today, habit_id)
     )
 
-    # добавляем лог
+    # Добавляем запись в журнал
     cursor.execute(
-        "INSERT INTO habit_logs (habit_id, user_id, marked_date) VALUES (%s, %s, %s)",
+        "INSERT INTO habit_logs (habit_id, user_id, marked_date) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (habit_id, user_id, today)
     )
 
     conn.commit()
 
-    bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}",
-    show_alert=False)
+    bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}")
+
 
 # ---------- УДАЛЕНИЕ ----------
-
 def delete_habit(bot, call, habit_id):
-    cursor.execute(
-        "DELETE FROM habits WHERE id = %s",
-        (habit_id,)
-    )
+    cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
     conn.commit()
-    bot.answer_callback_query(call.id, "Привычка удалена 🗑")
+    bot.answer_callback_query(call.id, "Привычка удалена ❌")
+    list_habits(bot, call.message)
+
+
+# ---------- ВСПОМОГАТЕЛЬНОЕ ----------
+def add_main_menu_reply(bot, user_id, text=""):
+    """Добавляет реплай-кнопку 'Главное меню'"""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🏠 Главное меню")
+    bot.send_message(user_id, text, reply_markup=markup)
