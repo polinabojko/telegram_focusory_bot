@@ -25,6 +25,13 @@ def add_main_menu_reply(bot, user_id, text=""):
 # --- запуск focus_watcher ---
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 watcher_thread.start()
+@bot.message_handler(func=lambda m: m.text == "🏠 Главное меню")
+def return_to_main(message):
+    bot.send_message(
+        message.chat.id,
+        "Вы вернулись в главное меню",
+        reply_markup=keyboards.main_menu()  # inline-кнопки
+    )
 
 @bot.message_handler(commands=["start"])
 def start(message):
