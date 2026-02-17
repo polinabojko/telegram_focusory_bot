@@ -7,7 +7,9 @@ def menu(bot, message):
     markup.add("➕ Добавить", "📋 Список")
     markup.add("🔙 Назад")
     bot.send_message(message.chat.id, "📝 Заметки.", reply_markup=markup)
-
+    # Добавляем реплай-кнопку "Главное меню" внизу чата
+    from main import add_main_menu_reply
+    add_main_menu_reply(bot, message.chat.id, text="Можно вернуться в главное меню:")
 # ---------- ДОБАВЛЕНИЕ ----------
 def ask_note_text(bot, call):
     msg = bot.send_message(call.message.chat.id, "Введите текст заметки:")
