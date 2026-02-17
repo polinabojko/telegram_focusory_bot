@@ -1,12 +1,10 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import cursor
+from database import cursor, conn
 from datetime import date, timedelta
-from functools import partial
 
 TASKS_PER_PAGE = 5
 
 # ---------- МЕНЮ ----------
-
 def tasks_menu(bot, message):
     markup = InlineKeyboardMarkup()
     markup.add(InlineKeyboardButton("➕ Добавить", callback_data="add_task"))
@@ -19,15 +17,13 @@ def tasks_menu(bot, message):
         message.message_id,
         reply_markup=markup
     )
-    # Добавляем реплай-кнопку "Главное меню" внизу чата
-    from main import add_main_menu_reply
-    add_main_menu_reply(bot, message.chat.id, text="Можно вернуться в главное меню:")
+
 
 # ---------- ДОБАВЛЕНИЕ ----------
-
 def ask_task_text(bot, call):
     msg = bot.send_message(call.message.chat.id, "Введите текст задачи:")
-    bot.register_next_step_handler(msg, partial(save_task_text, bot=bot))
+    bot.register_next_step_handler(msg, save_task_text, bot)
+
 
 def save_task_text(message, bot):
     user_id = message.chat.id
@@ -40,11 +36,14 @@ def save_task_text(message, bot):
     )
     markup.add(
         InlineKeyboardButton("Неделя", callback_data=f"due_week|{title}"),
-        InlineKeyboardButton("Месяц", callback_data=f"due_month|{title}"),
+        InlineKeyboardButton("Месяц", callback_data=f"due_month|{title}")
+    )
+    markup.add(
         InlineKeyboardButton("Без срока", callback_data=f"due_none|{title}")
     )
 
     bot.send_message(user_id, "Выберите срок:", reply_markup=markup)
+
 
 def save_task(user_id, title, due_type):
     today = date.today()
@@ -64,10 +63,10 @@ def save_task(user_id, title, due_type):
         "INSERT INTO tasks (user_id, title, due_date) VALUES (%s, %s, %s)",
         (user_id, title, due)
     )
-    cursor.connection.commit()
+    conn.commit()
+
 
 # ---------- СПИСОК ----------
-
 def show_tasks(bot, message, page):
     user_id = message.chat.id
     today = date.today()
@@ -79,30 +78,29 @@ def show_tasks(bot, message, page):
         ORDER BY
             completed ASC,
             CASE
-                WHEN due_date IS NULL THEN 3
+                WHEN due_date IS NULL THEN 5
                 WHEN due_date < %s THEN 0
                 WHEN due_date = %s THEN 1
-                ELSE 2
+                WHEN due_date <= %s + INTERVAL '7 days' THEN 2
+                WHEN due_date <= %s + INTERVAL '30 days' THEN 3
+                ELSE 4
             END,
             due_date ASC
-    """, (user_id, today, today))
+    """, (user_id, today, today, today, today))
 
-    tasks = cursor.fetchall()
-
-    if not tasks:
-        bot.send_message(user_id, "Нет задач.")
-        return
-
+    tasks_list = cursor.fetchall()
     start = page * TASKS_PER_PAGE
     end = start + TASKS_PER_PAGE
-    page_tasks = tasks[start:end]
+    page_tasks = tasks_list[start:end]
 
     text = "📋 Список задач:\n\n"
     markup = InlineKeyboardMarkup()
 
     for t in page_tasks:
         status = "✅" if t[3] else "▫"
-        text += f"{status} {t[1]}\n"
+        due_str = t[2].strftime("%d.%m") if t[2] else "Без срока"
+        text += f"{status} {t[1]} — {due_str}\n"
+
         markup.add(
             InlineKeyboardButton("✔", callback_data=f"complete_{t[0]}"),
             InlineKeyboardButton("✏", callback_data=f"edit_{t[0]}"),
@@ -113,7 +111,7 @@ def show_tasks(bot, message, page):
     nav = []
     if page > 0:
         nav.append(InlineKeyboardButton("⬅", callback_data=f"tasks_page_{page-1}"))
-    if end < len(tasks):
+    if end < len(tasks_list):
         nav.append(InlineKeyboardButton("➡", callback_data=f"tasks_page_{page+1}"))
     if nav:
         markup.row(*nav)
@@ -127,30 +125,33 @@ def show_tasks(bot, message, page):
         reply_markup=markup
     )
 
-# ---------- ДЕЙСТВИЯ ----------
 
+# ---------- ДЕЙСТВИЯ ----------
 def complete_task(task_id):
     cursor.execute(
         "UPDATE tasks SET completed = TRUE WHERE id = %s",
         (task_id,)
     )
-    cursor.connection.commit()
+    conn.commit()
+
 
 def delete_task(task_id):
     cursor.execute(
         "DELETE FROM tasks WHERE id = %s",
         (task_id,)
     )
-    cursor.connection.commit()
+    conn.commit()
+
 
 def edit_task(bot, call, task_id):
     msg = bot.send_message(call.message.chat.id, "Введите новый текст:")
-    bot.register_next_step_handler(msg, partial(update_task_text, bot=bot, task_id=task_id))
+    bot.register_next_step_handler(msg, update_task_text, bot, task_id)
+
 
 def update_task_text(message, bot, task_id):
     cursor.execute(
         "UPDATE tasks SET title = %s WHERE id = %s",
         (message.text, task_id)
     )
-    cursor.connection.commit()
+    conn.commit()
     bot.send_message(message.chat.id, "Обновлено ✅")
