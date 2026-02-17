@@ -128,6 +128,10 @@ def callback_router(call):
     elif data == "mood":
         import mood
         mood.menu(bot, call.message.chat.id)
+    elif data.startswith("mood_"):
+        mood_choice = data.split("_")[1]
+        mood.save_mood(user_id, mood_choice)
+        bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice}")
         
 
 bot.polling()
