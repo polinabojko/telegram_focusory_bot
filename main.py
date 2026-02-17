@@ -1,4 +1,4 @@
-keyboards telebot
+import telebot
 from config import TOKEN
 from database import init_db, cursor, conn
 import keyboards
