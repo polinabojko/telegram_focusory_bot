@@ -140,3 +140,44 @@ def focus_watcher(bot):
                 bot.send_message(user_id, f"🍅 Новый фокус (цикл {cycle+1})")
 
         time.sleep(30)
+
+from datetime import datetime
+from database import cursor
+
+
+def show_remaining_time(bot, user_id):
+    cursor.execute("""
+        SELECT mode, cycle, ends_at
+        FROM focus_sessions
+        WHERE user_id = %s
+        AND active = TRUE
+        ORDER BY id DESC
+        LIMIT 1
+    """, (user_id,))
+
+    session = cursor.fetchone()
+
+    if not session:
+        bot.send_message(user_id, "Нет активной фокус-сессии.")
+        return
+
+    mode, cycle, ends_at = session
+
+    now = datetime.now()
+    remaining = ends_at - now
+
+    if remaining.total_seconds() <= 0:
+        bot.send_message(user_id, "Сессия почти завершена...")
+        return
+
+    minutes = int(remaining.total_seconds() // 60)
+    seconds = int(remaining.total_seconds() % 60)
+
+    mode_text = "🍅 Фокус" if mode == "focus" else "☕ Перерыв"
+
+    bot.send_message(
+        user_id,
+        f"{mode_text}\n"
+        f"Цикл: {cycle}\n"
+        f"Осталось: {minutes:02d}:{seconds:02d}"
+    )
