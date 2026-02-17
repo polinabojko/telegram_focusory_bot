@@ -80,3 +80,24 @@ def send_stats(bot, message):
         bot.send_photo(user_id, photo)
 
     os.remove(filename)
+
+from datetime import date, timedelta
+
+
+def check_streak_reset(user_id):
+    cursor.execute("""
+        SELECT id, last_marked
+        FROM habits
+        WHERE user_id = %s
+    """, (user_id,))
+
+    habits = cursor.fetchall()
+    today = date.today()
+
+    for habit_id, last_marked in habits:
+        if last_marked and last_marked < today - timedelta(days=1):
+            cursor.execute("""
+                UPDATE habits
+                SET streak = 0
+                WHERE id = %s
+            """, (habit_id,))
