@@ -86,10 +86,8 @@ def callback_router(call):
         )
     elif data == "focus":
         focus.focus_menu(bot, call.message)
-    elif data.startswith("focus_"):
-        if data == "focus_stop":
-            focus.stop_focus(bot, user_id)
-        else:
-            minutes = int(data.split("_")[1])
-            focus.start_focus(bot, user_id, minutes)
+    elif data == "pomodoro_start":
+        focus.start_pomodoro(bot, user_id)
+    elif data == "focus_stop":
+        focus.stop_focus(bot, user_id)
 bot.polling()
