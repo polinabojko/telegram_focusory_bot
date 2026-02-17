@@ -123,22 +123,43 @@ def callback_router(call):
     elif data == "focus_time":
         focus.show_remaining_time(bot, user_id)
 
-    # --- Заметки ---
+    # ------------------ ЗАМЕТКИ ------------------
     elif data == "notes":
-        notes.notes_menu(bot, call.message)
+        import notes
+        notes.menu(bot, call.message)
+
     elif data == "add_note":
+        import notes
         notes.ask_note_title(bot, call)
-    elif data.startswith("view_note_") or data.startswith("edit_note_") or data.startswith("delete_note_"):
-        notes.handle_note_callback(bot, call)
+
+    elif data == "list_notes":
+        import notes
+        notes.list_notes(bot, call.message)
+
+    elif data.startswith("note_"):
+        note_id = int(data.split("_")[1])
+        import notes
+        notes.note_actions(bot, call, note_id)
+
+    elif data.startswith("edit_note_"):
+        note_id = int(data.split("_")[2])
+        import notes
+        notes.edit_note(bot, call, note_id)
+
+    elif data.startswith("delete_note_"):
+        note_id = int(data.split("_")[2])
+        import notes
+        notes.delete_note(bot, note_id, call)
+
+    # ------------------ НАСТРОЕНИЕ ------------------
     elif data == "mood":
+        import mood
         mood.mood_menu(bot, call.message)
+
     elif data.startswith("mood_"):
         mood_choice = data.split("_")[1]
-        cursor.execute(
-            "INSERT INTO mood (user_id, mood) VALUES (%s, %s)",
-            (user_id, mood_choice)
-        )
-        conn.commit()
-        bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice} ✅")
+        import mood
+        mood.save_mood(user_id, mood_choice)
+        bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice}")
 
 bot.polling()
