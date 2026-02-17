@@ -32,15 +32,19 @@ def ask_note_text(bot, message, title):
 def save_note(bot, message, title):
     user_id = message.chat.id
     content = message.text
+
+    # Сохраняем в БД
     cursor.execute(
         "INSERT INTO notes (user_id, title, content) VALUES (%s, %s, %s)",
         (user_id, title, content)
     )
     conn.commit()
-    bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
-    # Возвращаем в меню заметок
-    menu(bot, message)
 
+    # Отправляем уведомление
+    bot.send_message(user_id, f"✅ Заметка '{title}' добавлена!")
+
+    # Показываем меню заметок
+    menu(bot, message)
 def list_notes(bot, call):
     user_id = call.message.chat.id
     cursor.execute(
