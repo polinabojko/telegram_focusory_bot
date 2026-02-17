@@ -45,6 +45,9 @@ def list_habits(bot, message):
         (user_id,)
     )
     habits_list = cursor.fetchall()
+    markup.add(
+        InlineKeyboardButton("📊 График активности", callback_data=f"habit_graph_{h[0]}")
+    )
 
     if not habits_list:
         bot.edit_message_text(
