@@ -76,6 +76,16 @@ def callback_router(call):
     elif data.startswith("edit_"):
         task_id = int(data.split("_")[1])
         tasks.edit_task(bot, call, task_id)
+    elif data == "main":
+        try:
+            bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
+        except:
+            pass
+        bot.send_message(
+            call.message.chat.id,
+            "Главное меню",
+            reply_markup=keyboards.main_menu()
+        )
 
     # --- Привычки ---
     elif data == "habits":
