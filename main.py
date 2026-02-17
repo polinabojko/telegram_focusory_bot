@@ -8,6 +8,7 @@ import stats
 import focus
 import notes
 import threading
+import mood
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
@@ -124,5 +125,7 @@ def callback_router(call):
         notes.ask_note_title(bot, call)
     elif data.startswith("view_note_") or data.startswith("edit_note_") or data.startswith("delete_note_"):
         notes.handle_note_callback(bot, call)
+    elif data == "mood":
+        mood.menu(bot, call.message.chat.id)
 
 bot.polling()
