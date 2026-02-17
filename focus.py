@@ -27,8 +27,6 @@ def active_focus_keyboard():
     return markup
 
 # ---------- ЗАПУСК СЕССИИ ----------
-
-def start_pomodoro(bot, user_id):
 def start_pomodoro(bot, user_id, work=25, rest=5):
     # Завершаем старые сессии
     cursor.execute("""
