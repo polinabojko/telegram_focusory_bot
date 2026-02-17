@@ -1,29 +1,33 @@
 from telebot import types
 from database import cursor, conn
 
-# ---------- МЕНЮ ----------
-def menu(bot, user_id):
+# ---------- МЕНЮ ЗАМЕТОК ----------
+def menu(bot, message):
+    """Главное меню заметок"""
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton("➕ Добавить заметку", callback_data="add_note"),
         types.InlineKeyboardButton("📋 Список заметок", callback_data="list_notes")
     )
     markup.add(types.InlineKeyboardButton("⬅ Главное меню", callback_data="main"))
-    bot.send_message(user_id, "🗒 Заметки", reply_markup=markup)
 
-# ---------- ДОБАВЛЕНИЕ ----------
+    bot.edit_message_text(
+        "🗒 Заметки",
+        message.chat.id,
+        message.message_id,
+        reply_markup=markup
+    )
+
+# ---------- ДОБАВЛЕНИЕ ЗАМЕТКИ ----------
 def ask_note_title(bot, call):
     msg = bot.send_message(call.message.chat.id, "Введите название заметки:")
-    bot.register_next_step_handler(msg, ask_note_text)
+    bot.register_next_step_handler(msg, lambda m: ask_note_text(bot, m, m.text))
 
-def ask_note_text(message):
-    user_id = message.chat.id
-    title = message.text
-    msg = message.bot.send_message(user_id, "Введите текст заметки:")
-    # Передаем title в следующую функцию через lambda
-    message.bot.register_next_step_handler(msg, lambda m: save_note(m, title))
+def ask_note_text(bot, message, title):
+    msg = bot.send_message(message.chat.id, "Введите текст заметки:")
+    bot.register_next_step_handler(msg, lambda m: save_note(bot, m, title))
 
-def save_note(message, title):
+def save_note(bot, message, title):
     user_id = message.chat.id
     content = message.text
     cursor.execute(
@@ -31,9 +35,9 @@ def save_note(message, title):
         (user_id, title, content)
     )
     conn.commit()
-    message.bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
-    # Сразу возвращаем в меню заметок
-    menu(message.bot, user_id)
+    bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
+    # Возвращаем в меню заметок
+    menu(bot, message)
 
 # ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, message):
@@ -55,7 +59,7 @@ def list_notes(bot, message):
 
     bot.send_message(user_id, "Выберите заметку:", reply_markup=markup)
 
-# ---------- ВЫБОР ЗАМЕТКИ ----------
+# ---------- ДЕЙСТВИЯ С ЗАМЕТКОЙ ----------
 def note_actions(bot, call, note_id):
     cursor.execute("SELECT title, content FROM notes WHERE id = %s", (note_id,))
     note = cursor.fetchone()
@@ -73,24 +77,30 @@ def note_actions(bot, call, note_id):
     )
     markup.add(types.InlineKeyboardButton("⬅ Список заметок", callback_data="list_notes"))
 
-    bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup)
+    bot.edit_message_text(
+        text,
+        call.message.chat.id,
+        call.message.message_id,
+        reply_markup=markup
+    )
+    bot.answer_callback_query(call.id)
 
-# ---------- УДАЛЕНИЕ ----------
+# ---------- УДАЛЕНИЕ ЗАМЕТКИ ----------
 def delete_note(bot, note_id, call):
     cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
     conn.commit()
     bot.answer_callback_query(call.id, "Заметка удалена ✅")
     list_notes(bot, call.message)
 
-# ---------- РЕДАКТИРОВАНИЕ ----------
+# ---------- РЕДАКТИРОВАНИЕ ЗАМЕТКИ ----------
 def edit_note(bot, call, note_id):
     msg = bot.send_message(call.message.chat.id, "Введите новый текст заметки:")
-    bot.register_next_step_handler(msg, lambda m: save_edited_note(m, note_id))
+    bot.register_next_step_handler(msg, lambda m: save_edited_note(bot, m, note_id))
 
-def save_edited_note(message, note_id):
+def save_edited_note(bot, message, note_id):
     new_content = message.text
     cursor.execute("UPDATE notes SET content = %s WHERE id = %s", (new_content, note_id))
     conn.commit()
-    message.bot.send_message(message.chat.id, "Заметка обновлена ✅")
-    # Сразу возвращаем в меню заметок
-    menu(message.bot, message.chat.id)
+    bot.send_message(message.chat.id, "Заметка обновлена ✅")
+    # Возвращаем в меню заметок
+    menu(bot, message)
