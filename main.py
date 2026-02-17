@@ -76,5 +76,8 @@ def callback_router(call):
     elif data.startswith("graph_"):
         habit_id = int(data.split("_")[1])
         habit_graphs.habit_activity_graph(bot, call, habit_id)
+
+    elif data == "stats":
+        stats.send_stats(bot, call.message)
     
 bot.polling()
