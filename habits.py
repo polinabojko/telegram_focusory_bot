@@ -75,11 +75,15 @@ def list_habits(bot, message):
 
 # ---------- ЛОГИКА СТРИКА ----------
 
+from database import cursor, conn
+from datetime import date, timedelta
+
+
 def mark_habit(bot, call, habit_id):
     today = date.today()
 
     cursor.execute(
-        "SELECT streak, last_marked FROM habits WHERE id = %s",
+        "SELECT streak, last_marked, user_id FROM habits WHERE id = %s",
         (habit_id,)
     )
     habit = cursor.fetchone()
@@ -87,7 +91,7 @@ def mark_habit(bot, call, habit_id):
     if not habit:
         return
 
-    streak, last_marked = habit
+    streak, last_marked, user_id = habit
 
     if last_marked == today:
         bot.answer_callback_query(call.id, "Сегодня уже отмечено 👀")
@@ -98,9 +102,18 @@ def mark_habit(bot, call, habit_id):
     else:
         streak = 1
 
+    # обновляем streak
     cursor.execute(
         "UPDATE habits SET streak = %s, last_marked = %s WHERE id = %s",
         (streak, today, habit_id)
     )
+
+    # добавляем лог
+    cursor.execute(
+        "INSERT INTO habit_logs (habit_id, user_id, marked_date) VALUES (%s, %s, %s)",
+        (habit_id, user_id, today)
+    )
+
+    conn.commit()
 
     bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}")
