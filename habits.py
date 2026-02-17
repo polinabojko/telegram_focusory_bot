@@ -111,7 +111,8 @@ def mark_habit(bot, call, habit_id):
 
     conn.commit()
 
-    bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}")
+    bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}",
+    show_alert=False)
 
 # ---------- УДАЛЕНИЕ ----------
 
