@@ -5,7 +5,7 @@ from datetime import date
 
 MOOD_OPTIONS = ["😃", "🙂", "😐", "😔", "😡"]
 
-def menu(bot, message):
+def mood_menu(bot, message):
     markup = InlineKeyboardMarkup()
     for m in MOOD_OPTIONS:
         markup.add(InlineKeyboardButton(m, callback_data=f"mood_{m}"))
