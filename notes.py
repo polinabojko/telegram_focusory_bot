@@ -10,15 +10,15 @@ def menu(bot, message):
         types.InlineKeyboardButton("📋 Список заметок", callback_data="list_notes")
     )
     markup.add(types.InlineKeyboardButton("⬅ Главное меню", callback_data="main"))
-
-    bot.edit_message_text(
-        "🗒 Заметки",
-        message.chat.id,
-        message.message_id,
-        reply_markup=markup
-    )
-except:
-    bot.send_message(message.chat.id, "🗒 Заметки", reply_markup=markup)
+    try:
+        bot.edit_message_text(
+            "🗒 Заметки",
+            message.chat.id,
+            message.message_id,
+            reply_markup=markup
+        )
+    except:
+        bot.send_message(message.chat.id, "🗒 Заметки", reply_markup=markup)
 
 # ---------- ДОБАВЛЕНИЕ ЗАМЕТКИ ----------
 def ask_note_title(bot, call):
