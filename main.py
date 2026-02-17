@@ -18,18 +18,6 @@ init_db()
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 watcher_thread.start()
 
-# --- Обработчик возврата в главное меню ---
-@bot.message_handler(func=lambda m: m.text == "🏠 Главное меню")
-def return_to_main(message):
-    try:
-        bot.edit_message_reply_markup(message.chat.id, message.message_id, reply_markup=None)
-    except:
-        pass
-    bot.send_message(
-        message.chat.id,
-        "Вы вернулись в главное меню",
-        reply_markup=keyboards.main_menu()
-    )
 
 # --- Команда /start ---
 @bot.message_handler(commands=["start"])
