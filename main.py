@@ -9,6 +9,7 @@ import stats
 import focus
 import threading
 
+
 bot = telebot.TeleBot(TOKEN)
 
 init_db()
@@ -98,6 +99,17 @@ def callback_router(call):
         focus.stop_focus(bot, user_id)
     elif data == "focus_time":
         focus.show_remaining_time(bot, user_id)
+    elif data == "notes":
+        import notes
+        notes.menu(bot, call.message)
+
+    elif data == "add_note":
+        import notes
+        notes.ask_note_text(bot, call)
+
+    elif data == "list_notes":
+        import notes
+        notes.list_notes(bot, call.message)
         
 
 bot.polling()
