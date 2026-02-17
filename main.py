@@ -1,4 +1,4 @@
-import telebot
+keyboards telebot
 from config import TOKEN
 from database import init_db, cursor, conn
 import keyboards
@@ -79,7 +79,6 @@ def callback_router(call):
         tasks.edit_task(bot, call, task_id)
     # ------------------ ГЛАВНОЕ МЕНЮ ------------------
     elif data == "main":
-        import keyboards
         bot.edit_message_text(
             "Вы вернулись в главное меню",
             call.message.chat.id,
