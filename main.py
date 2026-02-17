@@ -109,12 +109,12 @@ def callback_router(call):
 
     # ------------------ ЗАМЕТКИ ------------------
     elif data == "notes":
-        notes.menu(bot, call.message.chat.id)
+        notes.menu(bot, call)
+
     elif data == "add_note":
         notes.ask_note_title(bot, call)
-
     elif data == "list_notes":
-        notes.list_notes(bot, call.message.chat.id)
+        notes.list_notes(bot, call)
 
     elif data.startswith("note_"):
         note_id = int(data.split("_")[1])
@@ -127,10 +127,8 @@ def callback_router(call):
     elif data.startswith("delete_note_"):
         note_id = int(data.split("_")[2])
         notes.delete_note(bot, note_id, call)
-
     # ------------------ НАСТРОЕНИЕ ------------------
     elif data == "mood":
-        import mood
         mood.mood_menu(bot, call.message)
 
     elif data.startswith("mood_"):
