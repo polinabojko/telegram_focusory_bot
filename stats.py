@@ -118,6 +118,17 @@ def send_stats(bot, message):
         avg_mood = reverse_map.get(avg_mood_value, "—")
     else:
         avg_mood = "—"
+    cursor.execute("""
+        SELECT COUNT(*) FROM focus_logs
+        WHERE user_id = %s
+    """, (user_id,))
+    total_focus = cursor.fetchone()[0]
+    cursor.execute("""
+        SELECT COUNT(*) FROM focus_logs
+        WHERE user_id = %s
+        AND completed_at >= CURRENT_DATE - INTERVAL '30 days'
+    """, (user_id,))
+    month_focus = cursor.fetchone()[0]
 
     # =====================
     #        ВЫВОД
@@ -140,6 +151,10 @@ def send_stats(bot, message):
 😊 Настроение:
 Среднее за 30 дней: {avg_mood}
 """
+    
+🎯 Фокус:
+Всего сессий: {total_focus}
+За 30 дней: {month_focus}
 
     bot.send_message(user_id, text)
 
