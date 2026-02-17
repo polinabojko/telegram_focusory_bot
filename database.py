@@ -73,10 +73,11 @@ def init_db():
     CREATE TABLE IF NOT EXISTS focus_sessions (
         id SERIAL PRIMARY KEY,
         user_id BIGINT,
-        mode TEXT, -- focus / break
+        mode TEXT,
         cycle INTEGER DEFAULT 1,
         ends_at TIMESTAMP,
-        active BOOLEAN DEFAULT TRUE
+        active BOOLEAN DEFAULT TRUE,
+        message_id BIGINT
     );
     """)
     cursor.execute("""
