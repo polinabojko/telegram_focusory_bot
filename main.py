@@ -122,6 +122,8 @@ def callback_router(call):
         focus.stop_focus(bot, user_id)
     elif data == "focus_time":
         focus.show_remaining_time(bot, user_id)
+    elif data == "back_focus":
+        focus.focus_menu(bot, call.message)
 
     # ------------------ ЗАМЕТКИ ------------------
     elif data == "notes":
