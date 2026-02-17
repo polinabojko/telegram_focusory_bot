@@ -7,15 +7,15 @@ import tasks
 import habits
 import stats
 import focus
+import threading
 
 bot = telebot.TeleBot(TOKEN)
 
 init_db()
-import threading
-import focus
 
-watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,))
-watcher_thread.daemon = True
+
+# --- запуск focus_watcher ---
+watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 watcher_thread.start()
 
 @bot.message_handler(commands=["start"])
