@@ -71,21 +71,24 @@ def callback_router(call):
     # --- Привычки ---
     elif data == "habits":
         habits.habits_menu(bot, call.message)
+
     elif data == "add_habit":
         habits.ask_habit_text(bot, call)
+
     elif data == "list_habits":
         habits.list_habits(bot, call.message)
+
     elif data.startswith("mark_"):
         habit_id = int(data.split("_")[1])
         habits.mark_habit(bot, call, habit_id)
+
     elif data.startswith("delete_habit_"):
         habit_id = int(data.split("_")[2])
         cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
         conn.commit()
-        # Обновляем список привычек
-        habits.list_habits(bot, call.message)
-        # Можно показать уведомление
         bot.answer_callback_query(call.id, "Привычка удалена ✅")
+    # Обновляем список привычек после удаления
+        habits.list_habits(bot, call.message)
     elif data.startswith("habit_graph_"):
         habit_id = int(data.split("_")[2])
         import habit_graphs
