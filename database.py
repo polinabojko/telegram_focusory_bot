@@ -65,8 +65,25 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_habit_logs_user_id
     ON habit_logs(user_id);
     """)
-
-cursor.execute("""
-CREATE INDEX IF NOT EXISTS idx_habit_logs_date
-ON habit_logs(marked_date);
-""")
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_habit_logs_date
+    ON habit_logs(marked_date);
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS focus_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        mode TEXT, -- focus / break
+        cycle INTEGER DEFAULT 1,
+        ends_at TIMESTAMP,
+        active BOOLEAN DEFAULT TRUE
+    );
+    """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS focus_logs (
+        id SERIAL PRIMARY KEY,
+        user_id BIGINT,
+        cycle INTEGER,
+        completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
