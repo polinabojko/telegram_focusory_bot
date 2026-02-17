@@ -75,5 +75,13 @@ def callback_router(call):
 
     elif data == "stats":
         stats.send_stats(bot, call.message)
+
+    elif data == "main":
+        bot.edit_message_text(
+            "Главное меню",
+            call.message.chat.id,
+            call.message.message_id,
+            reply_markup=keyboards.main_menu()
+        )
     
 bot.polling()
