@@ -1,5 +1,4 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 def main_menu():
     markup = InlineKeyboardMarkup()
     markup.add(
