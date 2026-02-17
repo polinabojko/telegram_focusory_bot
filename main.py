@@ -101,7 +101,7 @@ def callback_router(call):
         focus.show_remaining_time(bot, user_id)
     elif data == "notes":
         import notes
-        notes.menu(bot, call.message)
+        notes.menu(bot, call.message.chat.id)
 
     elif data == "add_note":
         import notes
