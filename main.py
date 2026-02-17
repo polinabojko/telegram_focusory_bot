@@ -97,15 +97,18 @@ def callback_router(call):
 
     # --- Фокус ---
     elif data == "focus":
-        focus.focus_menu(bot, call.message)
-    elif data == "pomodoro_start":
-        focus.start_pomodoro(bot, user_id)
+        focus.focus_menu(bot, call)
+    elif data.startswith("pomodoro_"):
+        parts = data.split("_")
+        work, rest = int(parts[1]), int(parts[2])
+        focus.start_pomodoro(bot, call.message.chat.id, work, rest)
     elif data == "focus_stop":
-        focus.stop_focus(bot, user_id)
+        focus.stop_focus(bot, call.message.chat.id)
     elif data == "focus_time":
-        focus.show_remaining_time(bot, user_id)
+        focus.show_remaining_time(bot, call.message.chat.id)
     elif data == "back_focus":
-        focus.focus_menu(bot, call.message)
+        focus.focus_menu(bot, call)
+    
 
     # ------------------ ЗАМЕТКИ ------------------
     elif data == "notes":
