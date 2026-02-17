@@ -1,6 +1,7 @@
 import telebot
 from config import TOKEN
 from database import init_db
+from database import cursor
 import keyboards
 import tasks
 import habits
