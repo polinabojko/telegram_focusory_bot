@@ -133,7 +133,6 @@ def callback_router(call):
 
     elif data.startswith("mood_"):
         mood_choice = data.split("_")[1]
-        import mood
         mood.save_mood(user_id, mood_choice)
         bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice}")
 
