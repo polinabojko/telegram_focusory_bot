@@ -6,6 +6,7 @@ import keyboards
 import tasks
 import habits
 import stats
+import focus
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -83,5 +84,12 @@ def callback_router(call):
             call.message.message_id,
             reply_markup=keyboards.main_menu()
         )
-    
+    elif data == "focus":
+        focus.focus_menu(bot, call.message)
+    elif data.startswith("focus_"):
+        if data == "focus_stop":
+            focus.stop_focus(bot, user_id)
+        else:
+            minutes = int(data.split("_")[1])
+            focus.start_focus(bot, user_id, minutes)
 bot.polling()
