@@ -6,49 +6,52 @@ import tasks
 import habits
 import stats
 import focus
-import threading
 import notes
-import mood
+import threading
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
 
+# --- Функция реплай "Главное меню" ---
 from telebot import types
-
-# ---------- ВСПОМОГАТЕЛЬНОЕ: Главное меню как реплай ----------
 def add_main_menu_reply(bot, user_id, text=""):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🏠 Главное меню")
     bot.send_message(user_id, text, reply_markup=markup)
 
-# ---------- ЗАПУСК focus_watcher ----------
+# --- Запуск фокуса в отдельном потоке ---
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 watcher_thread.start()
 
-# ---------- ОБРАБОТКА НАТИВНЫХ СООБЩЕНИЙ ----------
+# --- Обработчик возврата в главное меню ---
 @bot.message_handler(func=lambda m: m.text == "🏠 Главное меню")
 def return_to_main(message):
+    try:
+        bot.edit_message_reply_markup(message.chat.id, message.message_id, reply_markup=None)
+    except:
+        pass
     bot.send_message(
         message.chat.id,
         "Вы вернулись в главное меню",
-        reply_markup=keyboards.main_menu()  # inline-кнопки
+        reply_markup=keyboards.main_menu()
     )
 
+# --- Команда /start ---
 @bot.message_handler(commands=["start"])
 def start(message):
     bot.send_message(
         message.chat.id,
-        "Управление задачами и привычками.",
+        "Управление задачами, привычками и заметками.",
         reply_markup=keyboards.main_menu()
     )
 
-# ---------- CALLBACK HANDLER ----------
+# --- Основной callback router ---
 @bot.callback_query_handler(func=lambda call: True)
 def callback_router(call):
     data = call.data
     user_id = call.message.chat.id
 
-    # -------- ЗАДАЧИ --------
+    # --- Задачи ---
     if data == "tasks":
         tasks.tasks_menu(bot, call.message)
     elif data.startswith("tasks_page_"):
@@ -74,7 +77,7 @@ def callback_router(call):
         task_id = int(data.split("_")[1])
         tasks.edit_task(bot, call, task_id)
 
-    # -------- ПРИВЫЧКИ --------
+    # --- Привычки ---
     elif data == "habits":
         habits.habits_menu(bot, call.message)
     elif data == "add_habit":
@@ -90,11 +93,11 @@ def callback_router(call):
         conn.commit()
         habits.list_habits(bot, call.message)
 
-    # -------- СТАТИСТИКА --------
+    # --- Статистика ---
     elif data == "stats":
         stats.send_stats(bot, call.message)
 
-    # -------- FOCUS --------
+    # --- Фокус ---
     elif data == "focus":
         focus.focus_menu(bot, call.message)
     elif data == "pomodoro_start":
@@ -104,29 +107,12 @@ def callback_router(call):
     elif data == "focus_time":
         focus.show_remaining_time(bot, user_id)
 
-    # -------- ЗАМЕТКИ --------
+    # --- Заметки ---
     elif data == "notes":
-        notes.menu(bot, user_id)
+        notes.notes_menu(bot, call.message)
     elif data == "add_note":
         notes.ask_note_title(bot, call)
-    elif data == "list_notes":
-        notes.list_notes(bot, call.message)
-    elif data.startswith("note_"):
-        note_id = int(data.split("_")[1])
-        notes.note_actions(bot, call, note_id)
-    elif data.startswith("delete_note_"):
-        note_id = int(data.split("_")[2])
-        notes.delete_note(bot, note_id, call)
-    elif data.startswith("edit_note_"):
-        note_id = int(data.split("_")[2])
-        notes.edit_note(bot, call, note_id)
-
-    # -------- НАСТРОЕНИЕ --------
-    elif data == "mood":
-        mood.menu(bot, user_id)
-    elif data.startswith("mood_"):
-        mood_choice = data.split("_")[1]
-        mood.save_mood(user_id, mood_choice)
-        bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice}")
+    elif data.startswith("view_note_") or data.startswith("edit_note_") or data.startswith("delete_note_"):
+        notes.handle_note_callback(bot, call)
 
 bot.polling()
