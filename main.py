@@ -86,9 +86,10 @@ def callback_router(call):
         habits.list_habits(bot, call.message)
         # Можно показать уведомление
         bot.answer_callback_query(call.id, "Привычка удалена ✅")
-    elif data.startswith("graph_habit_"):
+    elif data.startswith("habit_graph_"):
         habit_id = int(data.split("_")[2])
-        habits.habit_activity_graph(bot, call, habit_id)
+        import habit_graphs
+        habit_graphs.habit_activity_graph(bot, call, habit_id)
 
 
     # --- Статистика ---
