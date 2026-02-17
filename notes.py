@@ -17,6 +17,8 @@ def menu(bot, message):
         message.message_id,
         reply_markup=markup
     )
+except:
+    bot.send_message(message.chat.id, "🗒 Заметки", reply_markup=markup)
 
 # ---------- ДОБАВЛЕНИЕ ЗАМЕТКИ ----------
 def ask_note_title(bot, call):
