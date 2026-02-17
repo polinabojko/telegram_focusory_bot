@@ -79,6 +79,7 @@ def callback_router(call):
     elif data.startswith("delete_habit_"):
         habit_id = int(data.split("_")[2])
         cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
+        conn.commit()
         habits.list_habits(bot, call.message)
 
     elif data == "stats":
@@ -110,6 +111,9 @@ def callback_router(call):
     elif data == "list_notes":
         import notes
         notes.list_notes(bot, call.message)
+    elif data == "mood":
+        import mood
+        mood.menu(bot, call.message.chat.id)
         
 
 bot.polling()
