@@ -99,12 +99,5 @@ def callback_router(call):
     elif data == "focus_time":
         focus.show_remaining_time(bot, user_id)
         
-CREATE TABLE IF NOT EXISTS focus_sessions (
-    id SERIAL PRIMARY KEY,
-    user_id BIGINT,
-    mode TEXT, -- focus / break
-    cycle INTEGER DEFAULT 1,
-    ends_at TIMESTAMP,
-    active BOOLEAN DEFAULT TRUE
-);
+
 bot.polling()
