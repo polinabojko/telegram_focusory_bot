@@ -21,3 +21,26 @@ def mood_menu(bot, user_id):
     markup.add("😃", "🙂", "😐", "😔", "😡")
     markup.add("🔙 Назад")
     bot.send_message(user_id, "Оцените день.", reply_markup=markup)
+
+from database import cursor
+
+
+def habit_statistics(user_id):
+    cursor.execute("""
+        SELECT COUNT(*) FROM habit_logs
+        WHERE user_id = %s
+    """, (user_id,))
+    total_marks = cursor.fetchone()[0]
+
+    cursor.execute("""
+        SELECT MAX(streak) FROM habits
+        WHERE user_id = %s
+    """, (user_id,))
+    best_streak = cursor.fetchone()[0] or 0
+
+    return total_marks, best_streak
+
+total, best = habit_statistics(message.chat.id)
+
+text += f"\n\n🔥 Всего отметок: {total}"
+text += f"\n🏆 Лучший стрик: {best}"
