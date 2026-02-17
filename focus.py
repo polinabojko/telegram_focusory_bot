@@ -29,15 +29,23 @@ def focus_menu(bot, message):
 # ---------- ЗАПУСК ----------
 
 def start_pomodoro(bot, user_id):
-    stop_focus(bot, user_id)  # отменяем если уже был
+    from datetime import datetime, timedelta
 
-    sessions[user_id] = {
-        "mode": "focus",
-        "cycle": 1
-    }
+    # деактивируем старые сессии
+    cursor.execute("""
+        UPDATE focus_sessions
+        SET active = FALSE
+        WHERE user_id = %s
+    """, (user_id,))
+
+    end_time = datetime.now() + timedelta(minutes=25)
+
+    cursor.execute("""
+        INSERT INTO focus_sessions (user_id, mode, cycle, ends_at)
+        VALUES (%s, 'focus', 1, %s)
+    """, (user_id, end_time))
 
     bot.send_message(user_id, "🍅 Фокус начат на 25 минут.")
-    start_focus_timer(bot, user_id, 25)
 
 
 def start_focus_timer(bot, user_id, minutes):
