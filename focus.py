@@ -12,11 +12,15 @@ def focus_menu(bot, message):
         InlineKeyboardButton("🍅 Режим 25/5", callback_data="pomodoro_start")
     )
     markup.add(
+    InlineKeyboardButton("⏳ Осталось времени", callback_data="focus_time")
+    )
+    markup.add(
         InlineKeyboardButton("⛔ Остановить", callback_data="focus_stop")
     )
     markup.add(
         InlineKeyboardButton("⬅ Назад", callback_data="main")
     )
+    
 
     bot.edit_message_text(
         "🎯 Pomodoro режим\n25 минут фокус → 5 минут перерыв",
