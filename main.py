@@ -90,4 +90,13 @@ def callback_router(call):
         focus.start_pomodoro(bot, user_id)
     elif data == "focus_stop":
         focus.stop_focus(bot, user_id)
+        
+CREATE TABLE IF NOT EXISTS focus_sessions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT,
+    mode TEXT, -- focus / break
+    cycle INTEGER DEFAULT 1,
+    ends_at TIMESTAMP,
+    active BOOLEAN DEFAULT TRUE
+);
 bot.polling()
