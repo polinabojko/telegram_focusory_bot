@@ -96,6 +96,8 @@ def callback_router(call):
         focus.start_pomodoro(bot, user_id)
     elif data == "focus_stop":
         focus.stop_focus(bot, user_id)
+    elif data == "focus_time":
+        focus.show_remaining_time(bot, user_id)
         
 CREATE TABLE IF NOT EXISTS focus_sessions (
     id SERIAL PRIMARY KEY,
