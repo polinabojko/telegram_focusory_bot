@@ -2,52 +2,95 @@ from telebot import types
 from database import cursor, conn
 
 # ---------- МЕНЮ ----------
-def menu(bot, message):
+def menu(bot, user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("➕ Добавить", "📋 Список")
-    markup.add("🔙 Назад")
-    bot.send_message(message.chat.id, "📝 Заметки.", reply_markup=markup)
-    # Добавляем реплай-кнопку "Главное меню" внизу чата
-    from main import add_main_menu_reply
-    add_main_menu_reply(bot, message.chat.id, text="Можно вернуться в главное меню:")
-# ---------- ДОБАВЛЕНИЕ ----------
-def ask_note_text(bot, call):
-    msg = bot.send_message(call.message.chat.id, "Введите текст заметки:")
-    bot.register_next_step_handler(msg, save_note, bot)
+    markup.add("➕ Добавить заметку", "📋 Список заметок")
+    markup.add("🏠 Главное меню")
+    bot.send_message(user_id, "🗒 Заметки", reply_markup=markup)
 
-def save_note(message, bot):
+# ---------- ДОБАВЛЕНИЕ ----------
+def ask_note_title(bot, call):
+    msg = bot.send_message(call.message.chat.id, "Введите название заметки:")
+    bot.register_next_step_handler(msg, ask_note_text)
+
+def ask_note_text(message):
+    user_id = message.chat.id
+    title = message.text
+    msg = message.bot.send_message(user_id, "Введите текст заметки:")
+    # Передаем title в следующую функцию через lambda
+    message.bot.register_next_step_handler(msg, lambda m: save_note(m, title))
+
+def save_note(message, title):
     user_id = message.chat.id
     content = message.text
     cursor.execute(
-        "INSERT INTO notes (user_id, content) VALUES (%s, %s)",
-        (user_id, content)
+        "INSERT INTO notes (user_id, title, content) VALUES (%s, %s, %s)",
+        (user_id, title, content)
     )
     conn.commit()
-    bot.send_message(user_id, "Заметка добавлена ✅")
+    message.bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
+    add_main_menu_reply(message.bot, user_id, "Вы можете вернуться в главное меню:")
 
-# ---------- СПИСОК ----------
+# ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, message):
     user_id = message.chat.id
     cursor.execute(
-        "SELECT id, content, created_at FROM notes WHERE user_id = %s ORDER BY created_at DESC",
+        "SELECT id, title FROM notes WHERE user_id = %s ORDER BY created_at DESC",
         (user_id,)
     )
-    rows = cursor.fetchall()
+    notes_list = cursor.fetchall()
 
-    if not rows:
-        bot.edit_message_text(
-            "Нет заметок.",
-            message.chat.id,
-            message.message_id
-        )
+    if not notes_list:
+        bot.send_message(user_id, "Пока нет заметок.")
         return
 
-    text = "📋 Ваши заметки:\n\n"
-    for note_id, content, created_at in rows:
-        text += f"- {content} ({created_at.strftime('%d.%m.%Y')})\n"
+    markup = types.InlineKeyboardMarkup()
+    for n in notes_list:
+        markup.add(types.InlineKeyboardButton(n[1], callback_data=f"note_{n[0]}"))
 
-    bot.edit_message_text(
-        text,
-        message.chat.id,
-        message.message_id
+    bot.send_message(user_id, "Выберите заметку:", reply_markup=markup)
+
+# ---------- ВЫБОР ЗАМЕТКИ ----------
+def note_actions(bot, call, note_id):
+    cursor.execute("SELECT title, content FROM notes WHERE id = %s", (note_id,))
+    note = cursor.fetchone()
+    if not note:
+        bot.answer_callback_query(call.id, "Заметка не найдена ❌")
+        return
+
+    title, content = note
+    text = f"🗒 {title}\n\n{content}"
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+        types.InlineKeyboardButton("✏ Редактировать", callback_data=f"edit_note_{note_id}"),
+        types.InlineKeyboardButton("🗑 Удалить", callback_data=f"delete_note_{note_id}")
     )
+    markup.add(types.InlineKeyboardButton("⬅ Назад", callback_data="list_notes"))
+
+    bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=markup)
+
+# ---------- УДАЛЕНИЕ ----------
+def delete_note(bot, note_id, call):
+    cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
+    conn.commit()
+    bot.answer_callback_query(call.id, "Заметка удалена ✅")
+    list_notes(bot, call.message)
+
+# ---------- РЕДАКТИРОВАНИЕ ----------
+def edit_note(bot, call, note_id):
+    msg = bot.send_message(call.message.chat.id, "Введите новый текст заметки:")
+    bot.register_next_step_handler(msg, lambda m: save_edited_note(m, note_id))
+
+def save_edited_note(message, note_id):
+    new_content = message.text
+    cursor.execute("UPDATE notes SET content = %s WHERE id = %s", (new_content, note_id))
+    conn.commit()
+    message.bot.send_message(message.chat.id, "Заметка обновлена ✅")
+    add_main_menu_reply(message.bot, message.chat.id)
+
+# ---------- ВСПОМОГАТЕЛЬНОЕ ----------
+def add_main_menu_reply(bot, user_id, text=""):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🏠 Главное меню")
+    bot.send_message(user_id, text, reply_markup=markup)
