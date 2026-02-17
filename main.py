@@ -14,7 +14,14 @@ bot = telebot.TeleBot(TOKEN)
 
 init_db()
 
+from telebot import types
+import keyboards
 
+def add_main_menu_reply(bot, user_id, text=""):
+    """Добавляет реплай-кнопку 'Главное меню' в любом разделе"""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("🏠 Главное меню")
+    bot.send_message(user_id, text, reply_markup=markup)
 # --- запуск focus_watcher ---
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 watcher_thread.start()
