@@ -13,12 +13,6 @@ import mood
 bot = telebot.TeleBot(TOKEN)
 init_db()
 
-# --- Функция реплай "Главное меню" ---
-from telebot import types
-def add_main_menu_reply(bot, user_id, text=""):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("🏠 Главное меню")
-    bot.send_message(user_id, text, reply_markup=markup)
 
 # --- Запуск фокуса в отдельном потоке ---
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
