@@ -84,3 +84,51 @@ def stop_focus(bot, user_id):
     if user_id in sessions:
         sessions.pop(user_id, None)
         bot.send_message(user_id, "⛔ Pomodoro остановлен.")
+
+import threading
+import time
+from datetime import datetime, timedelta
+from database import cursor
+
+
+def focus_watcher(bot):
+    while True:
+        cursor.execute("""
+            SELECT id, user_id, mode, cycle
+            FROM focus_sessions
+            WHERE active = TRUE
+            AND ends_at <= NOW()
+        """)
+
+        sessions = cursor.fetchall()
+
+        for session_id, user_id, mode, cycle in sessions:
+
+            if mode == "focus":
+                # переключаем на перерыв
+                new_end = datetime.now() + timedelta(minutes=5)
+
+                cursor.execute("""
+                    UPDATE focus_sessions
+                    SET mode = 'break',
+                        ends_at = %s
+                    WHERE id = %s
+                """, (new_end, session_id))
+
+                bot.send_message(user_id, "☕ Перерыв 5 минут.")
+
+            else:
+                # новый цикл фокуса
+                new_end = datetime.now() + timedelta(minutes=25)
+
+                cursor.execute("""
+                    UPDATE focus_sessions
+                    SET mode = 'focus',
+                        cycle = cycle + 1,
+                        ends_at = %s
+                    WHERE id = %s
+                """, (new_end, session_id))
+
+                bot.send_message(user_id, f"🍅 Новый фокус (цикл {cycle+1})")
+
+        time.sleep(30)
