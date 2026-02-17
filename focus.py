@@ -7,21 +7,18 @@ from database import cursor, conn  # твой модуль database с PostgreSQ
 timers = {}  # локально для таймеров уведомлений
 
 # ---------- КНОПКИ ----------
-
-def focus_menu(bot, message):
+def focus_menu(bot, call):
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🍅 Режим 25/5", callback_data="pomodoro_start"))
+    markup.add(InlineKeyboardButton("🍅 Режим 25/5", callback_data="pomodoro_25_5"))
     markup.add(InlineKeyboardButton("⬅ Назад", callback_data="main"))
 
     bot.edit_message_text(
         "🎯 Pomodoro режим\n25 минут фокус → 5 минут перерыв",
-        message.chat.id,
-        message.message_id,
+        call.message.chat.id,
+        call.message.message_id,
         reply_markup=markup
     )
-    # Добавляем реплай-кнопку "Главное меню" внизу чата
-    from main import add_main_menu_reply
-    add_main_menu_reply(bot, message.chat.id, text="Можно вернуться в главное меню:")
+    
 
 def active_focus_keyboard():
     markup = InlineKeyboardMarkup()
@@ -32,6 +29,7 @@ def active_focus_keyboard():
 # ---------- ЗАПУСК СЕССИИ ----------
 
 def start_pomodoro(bot, user_id):
+def start_pomodoro(bot, user_id, work=25, rest=5):
     # Завершаем старые сессии
     cursor.execute("""
         UPDATE focus_sessions
@@ -40,11 +38,11 @@ def start_pomodoro(bot, user_id):
     """, (user_id,))
     conn.commit()
 
-    end_time = datetime.now() + timedelta(minutes=25)
+    end_time = datetime.now() + timedelta(minutes=work)
 
     msg = bot.send_message(
         user_id,
-        "🍅 Фокус начат на 25 минут.",
+        f"🍅 Фокус начат на {work} минут.",
         reply_markup=active_focus_keyboard()
     )
 
@@ -156,7 +154,7 @@ def focus_watcher(bot, interval=60):
                         message_id,
                         reply_markup=active_focus_keyboard()
                     )
-                except:
-                    pass  # сообщение могло быть удалено пользователем
+                except telebot.apihelper.ApiTelegramException:
+                    continue
 
         time.sleep(interval)
