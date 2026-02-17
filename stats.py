@@ -49,6 +49,7 @@ from stats_graph import generate_month_graph
 
 
 def send_stats(bot, message):
+    check_streak_reset(user_id)
     user_id = message.chat.id
 
     # общее количество отметок
