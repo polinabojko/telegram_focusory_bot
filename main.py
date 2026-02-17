@@ -98,7 +98,6 @@ def callback_router(call):
         habits.mark_habit(bot, call, habit_id)
     elif data.startswith("delete_habit_"):
         habit_id = int(data.split("_")[2])
-        from database import conn  # убедись, что conn импортирован
         cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
         conn.commit()
         # Обновляем список привычек
