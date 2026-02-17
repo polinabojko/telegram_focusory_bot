@@ -17,6 +17,9 @@ def habits_menu(bot, message):
         message.message_id,
         reply_markup=markup
     )
+    # Добавляем реплай-кнопку "Главное меню" внизу чата
+    from main import add_main_menu_reply
+    add_main_menu_reply(bot, message.chat.id, text="Можно вернуться в главное меню:")
 
 # ---------- ДОБАВЛЕНИЕ ----------
 
