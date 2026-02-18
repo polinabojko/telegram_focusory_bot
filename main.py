@@ -89,10 +89,7 @@ def callback_router(call):
         bot.answer_callback_query(call.id, "Привычка удалена ✅")
     # Обновляем список привычек после удаления
         habits.list_habits(bot, call.message)
-    elif data.startswith("habit_graph_"):
-        habit_id = int(data.split("_")[2])
-        import habit_graphs
-        habit_graphs.habit_activity_graph(bot, call, habit_id)
+    
 
 
     # --- Статистика ---
