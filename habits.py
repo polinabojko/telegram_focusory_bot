@@ -63,7 +63,7 @@ def list_habits(bot, message):
         text += f"🔥 {h[1]} — {h[2]} дней\n"
 
         markup.add(
-            InlineKeyboardButton("✅ Отметить", callback_data=f"mark_{h[0]}"),
+            InlineKeyboardButton("✅ Отметить", callback_data=f"mark_habit_{h[0]}"),
             InlineKeyboardButton("🗑 Удалить", callback_data=f"delete_habit_{h[0]}")
         )
         
