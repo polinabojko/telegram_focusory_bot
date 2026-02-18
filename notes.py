@@ -105,7 +105,8 @@ def note_actions(bot, call, note_id):
 def delete_note(bot, note_id, call):
     cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
     conn.commit()
-    
+    bot.answer_callback_query(call.id, "Заметка удалена ✅")
+    list_notes(bot, call)
 
 # ---------- РЕДАКТИРОВАНИЕ ----------
 def edit_note(bot, call, note_id):
