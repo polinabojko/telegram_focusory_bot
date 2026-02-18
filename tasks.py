@@ -102,9 +102,9 @@ def show_tasks(bot, message, page):
         text += f"{status} {t[1]} — {due_str}\n"
 
         markup.add(
-            InlineKeyboardButton("✔", callback_data=f"complete_{t[0]}"),
-            InlineKeyboardButton("✏", callback_data=f"edit_{t[0]}"),
-            InlineKeyboardButton("🗑", callback_data=f"delete_{t[0]}")
+            InlineKeyboardButton("✔", callback_data=f"complete_task_{t[0]}"),
+            InlineKeyboardButton("✏", callback_data=f"edit_task_{t[0]}"),
+            InlineKeyboardButton("🗑", callback_data=f"delete_task_{t[0]}")
         )
 
     # пагинация
