@@ -32,8 +32,7 @@ def save_habit(message, bot):
     conn.commit()
     bot.send_message(message.chat.id, "Добавлено 🔥")
 
-    # Добавим кнопку «Главное меню»
-    add_main_menu_reply(bot, message.chat.id, "Вы можете вернуться в главное меню:")
+    
 
 
 # ---------- СПИСОК ----------
@@ -41,19 +40,19 @@ def list_habits(bot, message):
     user_id = message.chat.id
 
     cursor.execute(
-        "SELECT id, title, streak, last_marked FROM habits WHERE user_id = %s",
+        "SELECT id, title, streak FROM habits WHERE user_id = %s",
         (user_id,)
     )
     habits_list = cursor.fetchall()
-    markup.add(
-        InlineKeyboardButton("📊 График активности", callback_data=f"habit_graph_{h[0]}")
-    )
 
     if not habits_list:
         bot.edit_message_text(
             "Пока нет привычек.",
             message.chat.id,
-            message.message_id
+            message.message_id,
+            reply_markup=InlineKeyboardMarkup().add(
+                InlineKeyboardButton("⬅ Назад", callback_data="habits")
+            )
         )
         return
 
@@ -65,7 +64,10 @@ def list_habits(bot, message):
 
         markup.add(
             InlineKeyboardButton("✅ Отметить", callback_data=f"mark_{h[0]}"),
-            InlineKeyboardButton("🗑", callback_data=f"delete_habit_{h[0]}")
+            InlineKeyboardButton("🗑 Удалить", callback_data=f"delete_habit_{h[0]}")
+        )
+        markup.add(
+            InlineKeyboardButton("📊 График", callback_data=f"habit_graph_{h[0]}")
         )
 
     markup.add(InlineKeyboardButton("⬅ Назад", callback_data="habits"))
@@ -76,6 +78,7 @@ def list_habits(bot, message):
         message.message_id,
         reply_markup=markup
     )
+
 
 
 # ---------- ЛОГИКА СТРИКА ----------
@@ -129,9 +132,4 @@ def delete_habit(bot, call, habit_id):
     list_habits(bot, call.message)
 
 
-# ---------- ВСПОМОГАТЕЛЬНОЕ ----------
-def add_main_menu_reply(bot, user_id, text=""):
-    """Добавляет реплай-кнопку 'Главное меню'"""
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("🏠 Главное меню")
-    bot.send_message(user_id, text, reply_markup=markup)
+
