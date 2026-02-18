@@ -71,7 +71,7 @@ def callback_router(call):
             title = tasks.user_temp_tasks.get(user_id)
             if title:
                 tasks.save_task(user_id, title, due_type)
-                del user_temp_tasks[user_id]
+                del tasks.user_temp_tasks[user_id]
 
             tasks.tasks_menu(bot, call.message)
         elif data.startswith("complete_task_"):
