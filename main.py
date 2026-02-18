@@ -50,15 +50,15 @@ def callback_router(call):
         tasks.save_task(user_id, title, due_type)
         tasks.tasks_menu(bot, call.message)
     elif data.startswith("complete_task_"):
-        task_id = int(data.split("_")[1])
+        task_id = int(data.split("_")[2])
         tasks.complete_task(task_id)
         tasks.show_tasks(bot, call.message, 0)
     elif data.startswith("delete_task_"):
-        task_id = int(data.split("_")[1])
+        task_id = int(data.split("_")[2])
         tasks.delete_task(task_id)
         tasks.show_tasks(bot, call.message, 0)
     elif data.startswith("edit_task_"):
-        task_id = int(data.split("_")[1])
+        task_id = int(data.split("_")[2])
         tasks.edit_task(bot, call, task_id)
     # ------------------ ГЛАВНОЕ МЕНЮ ------------------
     elif data == "main":
@@ -129,7 +129,7 @@ def callback_router(call):
 
     elif data.startswith("delete_note_"):
         note_id = int(data.split("_")[2])
-        notes.delete_note(note_id)
+        notes.delete_note(bot, note_id, call)
         notes.list_notes(bot, call)
     elif data.startswith("note_"):
         note_id = int(data.split("_")[1])
