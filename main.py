@@ -33,6 +33,7 @@ def start(message):
 def callback_router(call):
     data = call.data
     user_id = call.message.chat.id
+    print("CALLBACK:", data)
 
     # --- Задачи ---
     if data == "tasks":
