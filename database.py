@@ -51,14 +51,29 @@ def init_db():
 
     # Notes
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS notes (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+        CREATE TABLE IF NOT EXISTS notes (
+            id SERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     """)
 
+# Добавляем колонку title, если её нет
+    cursor.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_name='notes' AND column_name='title'
+            ) THEN
+                ALTER TABLE notes ADD COLUMN title TEXT;
+            END IF;
+        END
+        $$;
+    """)
+    conn.commit()
     # Mood
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS mood (
