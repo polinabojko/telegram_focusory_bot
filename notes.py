@@ -3,10 +3,6 @@ from database import cursor, conn
 
 # ---------- МЕНЮ ЗАМЕТОК ----------
 def menu(bot, call):
-    """Главное меню заметок"""
-    # Убираем старые Reply-кнопки
-    bot.send_message(call.message.chat.id, "🗒 Заметки", reply_markup=types.ReplyKeyboardRemove())
-
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton("➕ Добавить заметку", callback_data="add_note"),
@@ -15,7 +11,7 @@ def menu(bot, call):
     markup.add(types.InlineKeyboardButton("⬅ Главное меню", callback_data="main"))
 
     bot.edit_message_text(
-        "Выберите действие с заметками:",
+        "🗒 Заметки\n\nВыберите действие:",
         call.message.chat.id,
         call.message.message_id,
         reply_markup=markup
@@ -33,14 +29,18 @@ def ask_note_text(bot, message, title):
 def save_note(bot, message, title):
     user_id = message.chat.id
     content = message.text
+
     cursor.execute(
         "INSERT INTO notes (user_id, title, content) VALUES (%s, %s, %s)",
         (user_id, title, content)
     )
     conn.commit()
+
     bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
-    # Сразу возвращаем в меню заметок
-    menu(bot, message)
+
+    # Показываем меню через новое сообщение
+    msg = bot.send_message(user_id, "Открываю меню заметок...")
+    menu(bot, types.SimpleNamespace(message=msg))
 
 # ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, call):
