@@ -141,7 +141,7 @@ def callback_router(call):
             mood.save_mood(user_id, mood_choice)
             bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice}")
     except Exception as e:
-    print("ERROR:", e)
+        print("ERROR:", e)
 
     
 bot.polling()
