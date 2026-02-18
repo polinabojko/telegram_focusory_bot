@@ -12,7 +12,6 @@ import mood
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
-user_temp_tasks = {}
 
 # --- Запуск фокуса в отдельном потоке ---
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
@@ -69,7 +68,7 @@ def callback_router(call):
             tasks.ask_task_text(bot, call)
         elif data.startswith("due_"):
             due_type = data.replace("due_", "")
-            title = user_temp_tasks.get(user_id)
+            title = tasks.user_temp_tasks.get(user_id)
             if title:
                 tasks.save_task(user_id, title, due_type)
                 del user_temp_tasks[user_id]
