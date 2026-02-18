@@ -113,7 +113,7 @@ def callback_router(call):
 
     # ------------------ ЗАМЕТКИ ------------------
     elif data == "notes":
-        notes.menu(bot, call)
+    show_notes_menu(bot, call.message.chat.id, call.message.message_id)
 
     elif data == "add_note":
         notes.ask_note_title(bot, call)
