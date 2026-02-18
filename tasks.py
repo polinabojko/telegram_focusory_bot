@@ -1,7 +1,7 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from database import cursor, conn
 from datetime import date, timedelta
-
+user_temp_tasks = {}
 TASKS_PER_PAGE = 5
 
 # ---------- МЕНЮ ----------
@@ -29,17 +29,20 @@ def save_task_text(message, bot):
     user_id = message.chat.id
     title = message.text
 
+    # сохраняем временно задачу
+    user_temp_tasks[user_id] = title
+
     markup = InlineKeyboardMarkup()
     markup.add(
-        InlineKeyboardButton("Сегодня", callback_data=f"due_today|{title}"),
-        InlineKeyboardButton("Завтра", callback_data=f"due_tomorrow|{title}")
+        InlineKeyboardButton("Сегодня", callback_data="due_today"),
+        InlineKeyboardButton("Завтра", callback_data="due_tomorrow")
     )
     markup.add(
-        InlineKeyboardButton("Неделя", callback_data=f"due_week|{title}"),
-        InlineKeyboardButton("Месяц", callback_data=f"due_month|{title}")
+        InlineKeyboardButton("Неделя", callback_data="due_week"),
+        InlineKeyboardButton("Месяц", callback_data="due_month")
     )
     markup.add(
-        InlineKeyboardButton("Без срока", callback_data=f"due_none|{title}")
+        InlineKeyboardButton("Без срока", callback_data="due_none")
     )
 
     bot.send_message(user_id, "Выберите срок:", reply_markup=markup)
@@ -54,7 +57,7 @@ def save_task(user_id, title, due_type):
         due = today + timedelta(days=1)
     elif due_type == "week":
         due = today + timedelta(days=7)
-    elif due_type == "month":
+    elif due_def == "month":
         due = today + timedelta(days=30)
     else:
         due = None
