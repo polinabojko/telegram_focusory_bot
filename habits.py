@@ -66,10 +66,7 @@ def list_habits(bot, message):
             InlineKeyboardButton("✅ Отметить", callback_data=f"mark_{h[0]}"),
             InlineKeyboardButton("🗑 Удалить", callback_data=f"delete_habit_{h[0]}")
         )
-        markup.add(
-            InlineKeyboardButton("📊 График", callback_data=f"habit_graph_{h[0]}")
-        )
-
+        
     markup.add(InlineKeyboardButton("⬅ Назад", callback_data="habits"))
 
     bot.edit_message_text(
