@@ -105,20 +105,18 @@ def note_actions(bot, call, note_id):
 def delete_note(bot, note_id, call):
     cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
     conn.commit()
-    bot.answer_callback_query(call.id, "Заметка удалена ✅")
-    # Сразу показываем список заметок
-    list_notes(bot, call)
+    
 
 # ---------- РЕДАКТИРОВАНИЕ ----------
 def edit_note(bot, call, note_id):
     msg = bot.send_message(call.message.chat.id, "Введите новый текст заметки:")
-    bot.register_next_step_handler(msg, lambda m: save_edited_note(bot, m, note_id))
+    bot.register_next_step_handler(msg, update_note_text, bot, note_id)
 
-def save_edited_note(bot, message, note_id):
-    new_content = message.text
-    cursor.execute("UPDATE notes SET content = %s WHERE id = %s", (new_content, note_id))
+
+def update_note_text(message, bot, note_id):
+    cursor.execute(
+        "UPDATE notes SET content = %s WHERE id = %s",
+        (message.text, note_id)
+    )
     conn.commit()
-    bot.send_message(message.chat.id, "Заметка обновлена ✅")
-    # Сразу возвращаем в меню заметок
-    msg = bot.send_message(message.chat.id, "🗒 Заметки\n\nВыберите действие:")
-    show_notes_menu(bot, msg.chat.id, msg.message_id)
+    bot.send_message(message.chat.id, "Обновлено ✅")
