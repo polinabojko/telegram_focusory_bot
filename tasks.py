@@ -57,7 +57,7 @@ def save_task(user_id, title, due_type):
         due = today + timedelta(days=1)
     elif due_type == "week":
         due = today + timedelta(days=7)
-    elif due_def == "month":
+    elif due_type == "month":
         due = today + timedelta(days=30)
     else:
         due = None
