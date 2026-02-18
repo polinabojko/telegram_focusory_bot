@@ -27,7 +27,6 @@ def start(message):
         "Управление задачами, привычками и заметками.",
         reply_markup=keyboards.main_menu()
     )
-
 # --- Основной callback router ---
 @bot.callback_query_handler(func=lambda call: True)
 def callback_router(call):
