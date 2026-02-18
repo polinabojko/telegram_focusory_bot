@@ -2,7 +2,7 @@ from telebot import types
 from database import cursor, conn
 
 # ---------- МЕНЮ ЗАМЕТОК ----------
-def menu(bot, call):
+def show_notes_menu(bot, chat_id, message_id):
     markup = types.InlineKeyboardMarkup()
     markup.add(
         types.InlineKeyboardButton("➕ Добавить заметку", callback_data="add_note"),
@@ -12,8 +12,8 @@ def menu(bot, call):
 
     bot.edit_message_text(
         "🗒 Заметки\n\nВыберите действие:",
-        call.message.chat.id,
-        call.message.message_id,
+        chat_id,
+        message_id,
         reply_markup=markup
     )
 
@@ -38,10 +38,10 @@ def save_note(bot, message, title):
 
     bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
 
-    # Показываем меню через новое сообщение
-    msg = bot.send_message(user_id, "Открываю меню заметок...")
-    menu(bot, types.SimpleNamespace(message=msg))
+     # создаём новое сообщение для меню
+    msg = bot.send_message(user_id, "🗒 Заметки\n\nВыберите действие:")
 
+    show_notes_menu(bot, msg.chat.id, msg.message_id)
 # ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, call):
     user_id = call.message.chat.id
