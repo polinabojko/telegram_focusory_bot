@@ -125,7 +125,7 @@ def mark_habit(bot, call, habit_id):
 def delete_habit(bot, call, habit_id):
     cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
     conn.commit()
-    bot.answer_callback_query(call.id, "Привычка удалена ❌")
+    bot.answer_callback_query(call.id, "Привычка удалена ✅")
     list_habits(bot, call.message)
 
 
