@@ -80,7 +80,7 @@ def callback_router(call):
             habits.list_habits(bot, call.message)
 
         elif data.startswith("mark_habit_"):
-            habit_id = int(data.split("_")[1])
+            habit_id = int(data.split("_")[2])
             habits.mark_habit(bot, call, habit_id)
 
         elif data.startswith("delete_habit_"):
