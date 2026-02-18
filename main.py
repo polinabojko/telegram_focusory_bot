@@ -49,15 +49,15 @@ def callback_router(call):
         title = parts[1]
         tasks.save_task(user_id, title, due_type)
         tasks.tasks_menu(bot, call.message)
-    elif data.startswith("complete_"):
+    elif data.startswith("complete_task_"):
         task_id = int(data.split("_")[1])
         tasks.complete_task(task_id)
         tasks.show_tasks(bot, call.message, 0)
-    elif data.startswith("delete_"):
+    elif data.startswith("delete_task_"):
         task_id = int(data.split("_")[1])
         tasks.delete_task(task_id)
         tasks.show_tasks(bot, call.message, 0)
-    elif data.startswith("edit_"):
+    elif data.startswith("edit_task_"):
         task_id = int(data.split("_")[1])
         tasks.edit_task(bot, call, task_id)
     # ------------------ ГЛАВНОЕ МЕНЮ ------------------
@@ -79,7 +79,7 @@ def callback_router(call):
     elif data == "list_habits":
         habits.list_habits(bot, call.message)
 
-    elif data.startswith("mark_"):
+    elif data.startswith("mark_habit_"):
         habit_id = int(data.split("_")[1])
         habits.mark_habit(bot, call, habit_id)
 
