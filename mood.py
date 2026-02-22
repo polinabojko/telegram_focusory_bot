@@ -25,5 +25,6 @@ def save_mood(user_id, mood):
         "INSERT INTO mood (user_id, mood, created_at) VALUES (%s, %s, CURRENT_DATE)",
         (user_id, mood)
     )
+    conn.commit()
     cursor.close()
     conn.close()
