@@ -5,7 +5,7 @@ def get_connection():
     conn = psycopg2.connect(DATABASE_URL, sslmode="require")
     conn.autocommit = True
     return conn
-    
+
 
 def init_db():
     conn = get_connection()
