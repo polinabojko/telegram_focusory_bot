@@ -37,6 +37,7 @@ def save_note(bot, message, title):
         (user_id, title, content)
     )
 
+    conn.commit()
     cursor.close()
     conn.close()
 
@@ -48,7 +49,7 @@ def save_note(bot, message, title):
     show_notes_menu(bot, msg.chat.id, msg.message_id)
 # ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, call):
-    user_id = call.message.chat.ID
+    user_id = call.message.chat.id
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -118,6 +119,7 @@ def delete_note(bot, note_id, call):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
+    conn.commit()
     cursor.close()
     conn.close()
     bot.answer_callback_query(call.id, "Заметка удалена ✅")
@@ -136,6 +138,7 @@ def update_note_text(message, bot, note_id):
         "UPDATE notes SET content = %s WHERE id = %s",
         (message.text, note_id)
     )
+    conn.commit()
     cursor.close()
     conn.close()
     bot.send_message(message.chat.id, "Обновлено ✅")
