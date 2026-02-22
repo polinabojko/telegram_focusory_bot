@@ -1,6 +1,6 @@
 # mood.py
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import cursor, conn
+from database import get_connection
 from datetime import date
 
 MOOD_OPTIONS = ["😃", "🙂", "😐", "😔", "😡"]
@@ -19,9 +19,11 @@ def mood_menu(bot, message):
     )
 
 def save_mood(user_id, mood):
-    today = date.today()
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO mood (user_id, mood, created_at) VALUES (%s, %s, CURRENT_DATE)",
         (user_id, mood)
     )
-    conn.commit()
+    cursor.close()
+    conn.close()
