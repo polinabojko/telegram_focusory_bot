@@ -1,5 +1,5 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import cursor, conn
+from database import get_connection
 from datetime import date, timedelta
 from telebot import types
 
@@ -25,11 +25,15 @@ def ask_habit_text(bot, call):
 
 
 def save_habit(message, bot):
+    conn = get_connection()
+    cursor = conn.cursor()
+
     cursor.execute(
         "INSERT INTO habits (user_id, title) VALUES (%s, %s)",
         (message.chat.id, message.text)
     )
-    conn.commit()
+    cursor.close()
+    conn.close()
     bot.send_message(message.chat.id, "Добавлено 🔥")
 
     
@@ -37,13 +41,17 @@ def save_habit(message, bot):
 
 # ---------- СПИСОК ----------
 def list_habits(bot, message):
-    user_id = message.chat.id
+    user_id = message.chat.ID
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
         "SELECT id, title, streak FROM habits WHERE user_id = %s",
         (user_id,)
     )
     habits_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
 
     if not habits_list:
         bot.edit_message_text(
@@ -81,6 +89,8 @@ def list_habits(bot, message):
 # ---------- ЛОГИКА СТРИКА ----------
 def mark_habit(bot, call, habit_id):
     today = date.today()
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
         "SELECT streak, last_marked, user_id FROM habits WHERE id = %s",
@@ -89,12 +99,16 @@ def mark_habit(bot, call, habit_id):
     habit = cursor.fetchone()
 
     if not habit:
+        cursor.close()
+        conn.close()
         bot.answer_callback_query(call.id, "Ошибка! Привычка не найдена ❌")
         return
 
     streak, last_marked, user_id = habit
 
     if last_marked == today:
+        cursor.close()
+        conn.close()
         bot.answer_callback_query(call.id, "Сегодня уже отмечено 👀")
         return
 
@@ -116,15 +130,19 @@ def mark_habit(bot, call, habit_id):
         (habit_id, user_id, today)
     )
 
-    conn.commit()
+    cursor.close()
+    conn.close()
 
     bot.answer_callback_query(call.id, f"Отмечено 🔥 Стрик: {streak}")
 
 
 # ---------- УДАЛЕНИЕ ----------
 def delete_habit(bot, call, habit_id):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
-    conn.commit()
+    cursor.close()
+    conn.close()
     bot.answer_callback_query(call.id, "Привычка удалена ✅")
     list_habits(bot, call.message)
 
