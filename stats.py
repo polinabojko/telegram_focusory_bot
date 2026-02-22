@@ -1,21 +1,27 @@
-from database import cursor
+from database import get_connection
 from datetime import date, timedelta
 from stats_graphs import generate_month_graph
 import os
 
 def check_streak_reset(user_id):
     """Сбрасывает стрик привычки, если пропущен день"""
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT id, last_marked FROM habits WHERE user_id = %s", (user_id,))
     habits = cursor.fetchall()
     today = date.today()
     for habit_id, last_marked in habits:
         if last_marked and last_marked < today - timedelta(days=1):
             cursor.execute("UPDATE habits SET streak = 0 WHERE id = %s", (habit_id,))
+    cursor.close()
+    conn.close()
 
 def send_stats(bot, message):
     """Отправляет пользователю статистику за 30 дней"""
     user_id = message.chat.id
     check_streak_reset(user_id)
+    conn = get_connection()
+    cursor = conn.cursor()
 
     # ------------------------
     # Задачи
@@ -49,6 +55,8 @@ def send_stats(bot, message):
     # ------------------------
     cursor.execute("SELECT mood FROM mood WHERE user_id = %s AND created_at >= CURRENT_DATE - INTERVAL '30 days'", (user_id,))
     moods = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
     mood_map = {"😃":5, "🙂":4, "😐":3, "😔":2, "😡":1}
     if moods:
         avg = sum(mood_map.get(m, 3) for m in moods) / len(moods)
