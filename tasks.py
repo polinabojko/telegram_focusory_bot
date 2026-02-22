@@ -1,5 +1,5 @@
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-from database import cursor, conn
+from database import get_connection
 from datetime import date, timedelta
 user_temp_tasks = {}
 TASKS_PER_PAGE = 5
@@ -61,18 +61,24 @@ def save_task(user_id, title, due_type):
         due = today + timedelta(days=30)
     else:
         due = None
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
         "INSERT INTO tasks (user_id, title, due_date) VALUES (%s, %s, %s)",
         (user_id, title, due)
     )
     conn.commit()
+    cursor.close()
+    conn.close()
 
 
 # ---------- СПИСОК ----------
 def show_tasks(bot, message, page):
     user_id = message.chat.id
     today = date.today()
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute("""
         SELECT id, title, due_date, completed
@@ -92,6 +98,8 @@ def show_tasks(bot, message, page):
     """, (user_id, today, today, today, today))
 
     tasks_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
     start = page * TASKS_PER_PAGE
     end = start + TASKS_PER_PAGE
     page_tasks = tasks_list[start:end]
@@ -131,19 +139,27 @@ def show_tasks(bot, message, page):
 
 # ---------- ДЕЙСТВИЯ ----------
 def complete_task(task_id):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute(
         "UPDATE tasks SET completed = TRUE WHERE id = %s",
         (task_id,)
     )
     conn.commit()
+    cursor.close()
+    conn.close()
 
 
 def delete_task(task_id):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute(
         "DELETE FROM tasks WHERE id = %s",
         (task_id,)
     )
     conn.commit()
+    cursor.close()
+    conn.close()
 
 
 def edit_task(bot, call, task_id):
@@ -152,9 +168,13 @@ def edit_task(bot, call, task_id):
 
 
 def update_task_text(message, bot, task_id):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute(
         "UPDATE tasks SET title = %s WHERE id = %s",
         (message.text, task_id)
     )
     conn.commit()
+    cursor.close()
+    conn.close()
     bot.send_message(message.chat.id, "Обновлено ✅")
