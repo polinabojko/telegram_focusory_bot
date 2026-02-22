@@ -1,15 +1,15 @@
 import psycopg2
 from config import DATABASE_URL
-
-try:
+import os
+def get_connection():
     conn = psycopg2.connect(DATABASE_URL, sslmode="require")
     conn.autocommit = True
-    cursor = conn.cursor()
-except Exception as e:
-    print("Ошибка подключения к БД:", e)
-    raise
+    return conn
+    
 
 def init_db():
+    conn = get_connection()
+    cursor = conn.cursor()
     # Tasks
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS tasks (
@@ -73,7 +73,7 @@ def init_db():
         END
         $$;
     """)
-    conn.commit()
+
     # Mood
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS mood (
@@ -85,26 +85,28 @@ def init_db():
     """)
 
     # Focus sessions
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS focus_sessions (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        mode TEXT,
-        cycle INTEGER DEFAULT 1,
-        ends_at TIMESTAMP,
-        active BOOLEAN DEFAULT TRUE,
-        message_id BIGINT
-    );
-    """)
+    #cursor.execute("""
+    #CREATE TABLE IF NOT EXISTS focus_sessions (
+      #  id SERIAL PRIMARY KEY,
+     #   user_id BIGINT NOT NULL,
+     #   mode TEXT,
+      #  cycle INTEGER DEFAULT 1,
+    #    ends_at TIMESTAMP,
+     #   active BOOLEAN DEFAULT TRUE,
+    #    message_id BIGINT
+  #  );
+   # """)
 
     # Focus logs
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS focus_logs (
-        id SERIAL PRIMARY KEY,
-        user_id BIGINT NOT NULL,
-        cycle INTEGER,
-        completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
+   # cursor.execute("""
+   # CREATE TABLE IF NOT EXISTS focus_logs (
+     #   id SERIAL PRIMARY KEY,
+      #  user_id BIGINT NOT NULL,
+       # cycle INTEGER,
+      #  completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   # );
+   # """)
+    cursor.close()
+    conn.close()
 
     print("✅ Database initialized successfully")
