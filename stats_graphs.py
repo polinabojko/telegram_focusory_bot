@@ -1,12 +1,14 @@
 import matplotlib.pyplot as plt
 from datetime import date, timedelta
-from database import cursor
+from database import get_connection
 import os
 from telebot import types
 
 def generate_month_graph(user_id):
     today = date.today()
     month_ago = today - timedelta(days=29)
+    conn = get_connection()
+    cursor = conn.cursor()
 
     # Получаем данные по привычкам
     cursor.execute("""
@@ -21,6 +23,8 @@ def generate_month_graph(user_id):
         WHERE user_id = %s AND created_at >= %s
     """, (user_id, month_ago))
     task_rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
 
     days = []
     habit_counts = []
@@ -48,7 +52,7 @@ def generate_month_graph(user_id):
     plt.tight_layout()
 
     # Сохраняем файл
-    filename = os.path.join(os.getcwd(), f"graph_{user_id}.png")
+    filename = os.path.join(os.getcwd(), f"graph_{user_id}_{today}.png")
     plt.savefig(filename)
     plt.close()
     return filename
