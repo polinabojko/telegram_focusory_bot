@@ -13,6 +13,7 @@ def check_streak_reset(user_id):
     for habit_id, last_marked in habits:
         if last_marked and last_marked < today - timedelta(days=1):
             cursor.execute("UPDATE habits SET streak = 0 WHERE id = %s", (habit_id,))
+    conn.commit()
     cursor.close()
     conn.close()
 
