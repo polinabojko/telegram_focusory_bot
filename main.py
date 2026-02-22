@@ -15,7 +15,7 @@ init_db()
 
 # --- Запуск фокуса в отдельном потоке ---
 watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
-watcher_thread.start()
+# watcher_thread.start()
 
 
 # --- Команда /start ---
