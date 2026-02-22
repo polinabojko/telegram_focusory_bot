@@ -1,5 +1,5 @@
 from telebot import types
-from database import cursor, conn
+from database import get_connection
 
 # ---------- МЕНЮ ЗАМЕТОК ----------
 def show_notes_menu(bot, chat_id, message_id):
@@ -29,12 +29,16 @@ def ask_note_text(bot, message, title):
 def save_note(bot, message, title):
     user_id = message.chat.id
     content = message.text
+    conn = get_connection()
+    cursor = conn.cursor()
 
     cursor.execute(
         "INSERT INTO notes (user_id, title, content) VALUES (%s, %s, %s)",
         (user_id, title, content)
     )
-    conn.commit()
+
+    cursor.close()
+    conn.close()
 
     bot.send_message(user_id, f"Заметка '{title}' добавлена ✅")
 
@@ -44,12 +48,16 @@ def save_note(bot, message, title):
     show_notes_menu(bot, msg.chat.id, msg.message_id)
 # ---------- СПИСОК ЗАМЕТОК ----------
 def list_notes(bot, call):
-    user_id = call.message.chat.id
+    user_id = call.message.chat.ID
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute(
         "SELECT id, title FROM notes WHERE user_id = %s ORDER BY created_at DESC",
         (user_id,)
     )
     notes_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
 
     if not notes_list:
         markup = types.InlineKeyboardMarkup()
@@ -77,8 +85,12 @@ def list_notes(bot, call):
 
 # ---------- ДЕЙСТВИЯ С ЗАМЕТКОЙ ----------
 def note_actions(bot, call, note_id):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute("SELECT title, content FROM notes WHERE id = %s", (note_id,))
     note = cursor.fetchone()
+    cursor.close()
+    conn.close()
     if not note:
         bot.answer_callback_query(call.id, "Заметка не найдена ❌")
         return
@@ -103,8 +115,11 @@ def note_actions(bot, call, note_id):
 
 # ---------- УДАЛЕНИЕ ----------
 def delete_note(bot, note_id, call):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute("DELETE FROM notes WHERE id = %s", (note_id,))
-    conn.commit()
+    cursor.close()
+    conn.close()
     bot.answer_callback_query(call.id, "Заметка удалена ✅")
     list_notes(bot, call)
 
@@ -115,9 +130,12 @@ def edit_note(bot, call, note_id):
 
 
 def update_note_text(message, bot, note_id):
+    conn = get_connection()
+    cursor = conn.cursor()
     cursor.execute(
         "UPDATE notes SET content = %s WHERE id = %s",
         (message.text, note_id)
     )
-    conn.commit()
+    cursor.close()
+    conn.close()
     bot.send_message(message.chat.id, "Обновлено ✅")
