@@ -1,6 +1,6 @@
 import telebot
 from config import TOKEN
-from database import init_db, cursor, conn
+from database import init_db, get_connection
 import keyboards
 import tasks
 import habits
@@ -103,8 +103,12 @@ def callback_router(call):
 
         elif data.startswith("delete_habit_"):
             habit_id = int(data.split("_")[2])
+            conn = get_connection()
+            cursor = conn.cursor()
             cursor.execute("DELETE FROM habits WHERE id = %s", (habit_id,))
             conn.commit()
+            cursor.close()
+            conn.close()
             bot.answer_callback_query(call.id, "Привычка удалена ✅")
         # Обновляем список привычек после удаления
             habits.list_habits(bot, call.message)
@@ -162,4 +166,5 @@ def callback_router(call):
         print("ERROR:", e)
 
     
-bot.polling()
+if __name__ == "__main__":
+    bot.polling(none_stop=True)
