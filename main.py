@@ -13,7 +13,6 @@ from reminders import send_morning_reminders
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
-
 # --- Запуск фокуса в отдельном потоке ---
 # watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 # watcher_thread.start()
