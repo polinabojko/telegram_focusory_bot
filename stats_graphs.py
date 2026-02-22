@@ -58,10 +58,7 @@ def send_month_graph(bot, user_id):
     """Отправка графика пользователю с кнопкой 'Главное меню'"""
     filename = generate_month_graph(user_id)
 
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add("🏠 Главное меню")
-
     with open(filename, "rb") as photo:
-        bot.send_photo(user_id, photo, reply_markup=markup)
+        bot.send_photo(user_id, photo)
 
     os.remove(filename)
