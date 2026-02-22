@@ -6,7 +6,7 @@ def main_menu():
         InlineKeyboardButton("🔁 Привычки", callback_data="habits")
     )
     markup.add(
-        InlineKeyboardButton("🎯 Фокус", callback_data="focus"),
+        #InlineKeyboardButton("🎯 Фокус", callback_data="focus"),
         InlineKeyboardButton("📊 Статистика", callback_data="stats")
     )
     markup.add(
