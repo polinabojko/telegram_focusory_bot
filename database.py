@@ -10,6 +10,13 @@ def get_connection():
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id BIGINT PRIMARY KEY,
+        timezone TEXT DEFAULT 'UTC',
+        reminders_enabled BOOLEAN DEFAULT TRUE
+    );
+    """)
     # Tasks
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS tasks (
