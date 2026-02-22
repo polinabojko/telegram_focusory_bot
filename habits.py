@@ -32,6 +32,7 @@ def save_habit(message, bot):
         "INSERT INTO habits (user_id, title) VALUES (%s, %s)",
         (message.chat.id, message.text)
     )
+    conn.commit()
     cursor.close()
     conn.close()
     bot.send_message(message.chat.id, "Добавлено 🔥")
@@ -41,7 +42,7 @@ def save_habit(message, bot):
 
 # ---------- СПИСОК ----------
 def list_habits(bot, message):
-    user_id = message.chat.ID
+    user_id = message.chat.id
     conn = get_connection()
     cursor = conn.cursor()
 
@@ -107,6 +108,7 @@ def mark_habit(bot, call, habit_id):
     streak, last_marked, user_id = habit
 
     if last_marked == today:
+        
         cursor.close()
         conn.close()
         bot.answer_callback_query(call.id, "Сегодня уже отмечено 👀")
@@ -129,6 +131,7 @@ def mark_habit(bot, call, habit_id):
         "INSERT INTO habit_logs (habit_id, user_id, marked_date) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
         (habit_id, user_id, today)
     )
+    conn.commit()
 
     cursor.close()
     conn.close()
