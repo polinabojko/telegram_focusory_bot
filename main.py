@@ -8,6 +8,8 @@ import stats
 import notes
 import threading
 import mood
+import time
+from reminders import send_morning_reminders
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
@@ -15,7 +17,16 @@ init_db()
 # --- Запуск фокуса в отдельном потоке ---
 # watcher_thread = threading.Thread(target=focus.focus_watcher, args=(bot,), daemon=True)
 # watcher_thread.start()
+# -----------------------------
+#  Запуск напоминаний в отдельном потоке
+# -----------------------------
+def reminder_loop():
+    while True:
+        send_morning_reminders(bot)
+        time.sleep(60)  # проверка каждую минуту
 
+threading.Thread(target=reminder_loop, daemon=True).start()
+# -----------------------------
 
 # --- Команда /start ---
 @bot.message_handler(commands=["start"])
