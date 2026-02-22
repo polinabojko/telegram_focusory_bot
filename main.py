@@ -5,7 +5,6 @@ import keyboards
 import tasks
 import habits
 import stats
-import focus
 import notes
 import threading
 import mood
