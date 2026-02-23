@@ -1,29 +1,32 @@
 # reminders.py
-import pytz
 from datetime import datetime
 from database import get_connection
 
 def send_morning_reminders(bot):
+    """Отправляет всем пользователям ежедневное уведомление в 3:00 UTC"""
+    now = datetime.utcnow()
+    if now.hour != 3:  # проверяем, что сейчас 3:00 UTC
+        return
+
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT user_id, timezone FROM users WHERE reminders_enabled = TRUE")
+    # Берём всех пользователей
+    cursor.execute("SELECT id FROM users")
     users = cursor.fetchall()
 
-    for user_id, tz_str in users:
-        try:
-            tz = pytz.timezone(tz_str)
-        except:
-            tz = pytz.UTC
-
-        now = datetime.now(tz)
-        if now.time().hour != 8:
-            continue
-
-        cursor.execute("SELECT title FROM tasks WHERE user_id = %s AND due_date = CURRENT_DATE AND completed = FALSE", (user_id,))
+    for (user_id,) in users:
+        # Задачи на сегодня
+        cursor.execute("""
+            SELECT title FROM tasks
+            WHERE user_id = %s AND due_date = CURRENT_DATE AND completed = FALSE
+        """, (user_id,))
         tasks_today = cursor.fetchall()
 
-        cursor.execute("SELECT title, streak FROM habits WHERE user_id = %s", (user_id,))
+        # Привычки
+        cursor.execute("""
+            SELECT title, streak FROM habits WHERE user_id = %s
+        """, (user_id,))
         habits_list = cursor.fetchall()
 
         text = "☀ Доброе утро!\n\n"
