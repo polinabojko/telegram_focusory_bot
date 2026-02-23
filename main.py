@@ -9,7 +9,7 @@ import notes
 import threading
 import mood
 import time
-from reminders import send_morning_reminders
+import reminders
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
@@ -21,8 +21,11 @@ init_db()
 # -----------------------------
 def reminder_loop():
     while True:
-        send_morning_reminders(bot)
-        time.sleep(60)  # проверка каждую минуту
+        try:
+            reminders.send_morning_reminders(bot)
+        except Exception as e:
+            print("Reminder error:", e)
+        time.sleep(60)  # проверяем каждую минуту
 
 threading.Thread(target=reminder_loop, daemon=True).start()
 # -----------------------------
