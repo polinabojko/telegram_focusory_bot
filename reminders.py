@@ -12,7 +12,7 @@ def send_morning_reminders(bot):
     cursor = conn.cursor()
 
     # Берём всех пользователей
-    cursor.execute("SELECT id FROM users")
+    cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
 
     for (user_id,) in users:
