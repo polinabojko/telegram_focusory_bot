@@ -10,12 +10,20 @@ def get_connection():
 def init_db():
     conn = get_connection()
     cursor = conn.cursor()
+    # создание таблицы
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         user_id BIGINT PRIMARY KEY,
         timezone TEXT DEFAULT 'UTC',
-        reminders_enabled BOOLEAN DEFAULT TRUE
-    );
+        reminders_enabled BOOLEAN DEFAULT TRUE,
+        last_reminder_date DATE
+        );
+        """)
+
+    # добавление колонки если таблица уже была
+    cursor.execute("""
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS last_reminder_date DATE;
     """)
     # Tasks
     cursor.execute("""
