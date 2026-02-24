@@ -3,29 +3,42 @@ from datetime import datetime
 from database import get_connection
 
 def send_morning_reminders(bot):
-    """Отправляет всем пользователям ежедневное уведомление в 3:00 UTC"""
     now = datetime.utcnow()
-    if now.hour != 3:  # проверяем, что сейчас 3:00 UTC
+    today = now.date()
+
+    # Ждём пока наступит 03:00 UTC
+    if now.hour < 3:
         return
 
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Берём всех пользователей
-    cursor.execute("SELECT user_id FROM users")
+    cursor.execute("""
+        SELECT user_id, last_reminder_date
+        FROM users
+        WHERE reminders_enabled = TRUE
+    """)
     users = cursor.fetchall()
 
-    for (user_id,) in users:
-        # Задачи на сегодня
+    for user_id, last_date in users:
+
+        # Если уже отправляли сегодня — пропускаем
+        if last_date == today:
+            continue
+
+        # --- Задачи ---
         cursor.execute("""
             SELECT title FROM tasks
-            WHERE user_id = %s AND due_date = CURRENT_DATE AND completed = FALSE
+            WHERE user_id = %s
+            AND due_date = CURRENT_DATE
+            AND completed = FALSE
         """, (user_id,))
         tasks_today = cursor.fetchall()
 
-        # Привычки
+        # --- Привычки ---
         cursor.execute("""
-            SELECT title, streak FROM habits WHERE user_id = %s
+            SELECT title, streak FROM habits
+            WHERE user_id = %s
         """, (user_id,))
         habits_list = cursor.fetchall()
 
@@ -47,5 +60,13 @@ def send_morning_reminders(bot):
 
         bot.send_message(user_id, text)
 
+        # Запоминаем, что сегодня уже отправили
+        cursor.execute("""
+            UPDATE users
+            SET last_reminder_date = %s
+            WHERE user_id = %s
+        """, (today, user_id))
+
+    conn.commit()
     cursor.close()
     conn.close()
