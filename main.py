@@ -188,27 +188,6 @@ def callback_router(call):
             bot.answer_callback_query(call.id, f"Сохранено настроение {mood_choice}")
     except Exception as e:
         print("ERROR:", e)
-
-def migrate_old_users():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO users (user_id)
-        SELECT DISTINCT user_id FROM tasks
-        ON CONFLICT (user_id) DO NOTHING;
-    """)
-
-    cursor.execute("""
-        INSERT INTO users (user_id)
-        SELECT DISTINCT user_id FROM habits
-        ON CONFLICT (user_id) DO NOTHING;
-    """)
-
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-migrate_old_users()    
+ 
 if __name__ == "__main__":
     bot.polling(none_stop=True)
