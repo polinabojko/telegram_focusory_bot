@@ -3,6 +3,7 @@ from datetime import datetime
 from database import get_connection
 
 def send_morning_reminders(bot):
+    print("REMINDER CHECK", datetime.utcnow())
     now = datetime.utcnow()
     today = now.date()
 
