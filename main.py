@@ -33,6 +33,18 @@ threading.Thread(target=reminder_loop, daemon=True).start()
 # --- Команда /start ---
 @bot.message_handler(commands=["start"])
 def start(message):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO users (user_id)
+        VALUES (%s)
+        ON CONFLICT (user_id) DO NOTHING
+    """, (message.chat.id,))
+
+    conn.commit()
+    cursor.close()
+    conn.close()
     bot.send_message(
         message.chat.id,
         """📌 Важные моменты в использовании бота
