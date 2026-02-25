@@ -1,6 +1,7 @@
 # reminders.py
 from datetime import datetime
 from database import get_connection
+from keyboards import main_menu
 
 def send_morning_reminders(bot):
     print("REMINDER CHECK", datetime.utcnow())
@@ -59,7 +60,11 @@ def send_morning_reminders(bot):
         else:
             text += "\n🔥 Привычек нет\n"
 
-        bot.send_message(user_id, text)
+        bot.send_message(
+            user_id,
+            text,
+            reply_markup=main_menu()
+        )
 
         # Запоминаем, что сегодня уже отправили
         cursor.execute("""
