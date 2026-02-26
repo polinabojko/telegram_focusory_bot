@@ -76,3 +76,4 @@ def send_morning_reminders(bot):
     conn.commit()
     cursor.close()
     conn.close()
+    
