@@ -10,6 +10,7 @@ import threading
 import mood
 import time
 import reminders
+from requests.exceptions import ReadTimeout, ConnectionError
 
 bot = telebot.TeleBot(TOKEN)
 init_db()
@@ -190,4 +191,12 @@ def callback_router(call):
         print("ERROR:", e)
  
 if __name__ == "__main__":
-    bot.polling(none_stop=True)
+    while True:
+        try:
+            bot.polling(none_stop=True, interval=0, timeout=20)
+        except (ReadTimeout, ConnectionError) as e:
+            print("Polling error:", e)
+            time.sleep(5)
+        except Exception as e:
+            print("Unexpected error:", e)
+            time.sleep(5)
